@@ -30,11 +30,13 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
   session, err := db.GetSession(bson.M{"cookie": cookie.Value})
   if err != nil {
     conn.Close()
+    return
   }
 
   user, err := db.GetUser(bson.M{"id": session.UserId})
   if err != nil {
     conn.Close()
+    return
   }
 
   client := &Client{
