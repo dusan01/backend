@@ -91,7 +91,9 @@ func (c *Community) Advance() {
     c.Timer = time.AfterFunc(time.Duration(media.Length)*time.Second, c.Advance)
   }
 
-  go c.Emit(NewEvent(-1, 0, "advance", c.M.Struct()))
+  if c.M != nil {
+    go c.Emit(NewEvent("advance", c.M.Struct()))
+  }
 }
 
 func (c *Community) Join(user *db.User) {
@@ -109,10 +111,9 @@ func (c *Community) Join(user *db.User) {
 }
 
 func (c *Community) Leave(user *db.User) {
+  c.LeaveWaitlist(user)
   c.Lock()
   defer c.Unlock()
-
-  c.LeaveWaitlist(user)
 
   for i, p := range c.P {
     if p.Id == user.Id {
@@ -133,7 +134,7 @@ func (c *Community) Leave(user *db.User) {
   // Done!
 }
 
-func (c *Community) Emit(e *Event) {
+func (c *Community) Emit(e Message) {
   for _, p := range c.P {
     go e.Dispatch(Clients[p.Id])
   }

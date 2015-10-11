@@ -84,9 +84,9 @@ func NewCommunity(host, url, name string, nsfw bool) (*Community, error) {
     Url:             url,
     Name:            name,
     HostId:          host,
-    Nsfw:            nsfw,
     WaitlistEnabled: true,
     DjRecycling:     true,
+    Nsfw:            nsfw,
     Created:         time.Now().Format(time.RFC3339),
     Updated:         time.Now().Format(time.RFC3339),
   }, nil
@@ -112,6 +112,7 @@ func (c *Community) HasPermission(globalRole int, id string, required int) bool 
 
 func (c *Community) Struct() structs.CommunityInfo {
   return structs.CommunityInfo{
+    Id:              c.Id,
     Url:             c.Url,
     Name:            c.Name,
     HostId:          c.HostId,

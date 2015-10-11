@@ -3,6 +3,7 @@ package structs
 import ()
 
 type CommunityInfo struct {
+  Id              string `json:"id"`
   Url             string `json:"url"`
   Name            string `json:"name"`
   HostId          string `json:"hostId"`

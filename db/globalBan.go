@@ -1,6 +1,10 @@
 package db
 
 import (
+  "code.google.com/p/go-uuid/uuid"
+  "gopkg.in/mgo.v2"
+  "gopkg.in/mgo.v2/bson"
+  "strings"
   "sync"
   "time"
 )
@@ -13,7 +17,7 @@ type GlobalBan struct {
 
   // Bannee Id
   // See /db/user/id
-  BaneeId string `json:"baneeId"`
+  BanneeId string `json:"baneeId"`
 
   // Banner Id
   // See /db/user/id
@@ -32,4 +36,31 @@ type GlobalBan struct {
 
   // The date this object was updated last in RFC 3339
   Updated string `json:"updated"`
+}
+
+func NewGlobalBan(bannee, banner, reason string, duration int) GlobalBan {
+  var t *time.Time
+  if duration <= 0 {
+    t = nil
+  } else {
+    ti := time.Now().Add(time.Duration(duration) * time.Second)
+    t = &ti
+  }
+  return GlobalBan{
+    Id:       strings.Replace(uuid.NewUUID().String(), "-", "", -1),
+    BanneeId: bannee,
+    BannerId: banner,
+    Reason:   reason,
+    Until:    t,
+    Created:  time.Now().Format(time.RFC3339),
+    Updated:  time.Now().Format(time.RFC3339),
+  }
+}
+
+func (gb GlobalBan) Save() error {
+  err := DB.C("globalBans").Update(bson.M{"id": gb.Id}, gb)
+  if err == mgo.ErrNotFound {
+    return DB.C("globalBans").Insert(gb)
+  }
+  return err
 }
