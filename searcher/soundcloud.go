@@ -20,7 +20,7 @@ func SearchSoundcloud(query string) ([]structs.SearchResult, error) {
     } `json:"user"`
   }
 
-  res, err := http.Get("https://api.soundcloud.com/tracks?client_id=fddfcd9f79c36f4716b4f7ab1664cd8d&max-results=50&q=" +
+  res, err := http.Get("https://api.soundcloud.com/tracks?client_id=fddfcd9f79c36f4716b4f7ab1664cd8d&limit=50&q=" +
     url.QueryEscape(query))
   if err != nil {
     return results, err
