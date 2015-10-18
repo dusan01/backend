@@ -114,7 +114,7 @@ func GetMedia(query interface{}) (*Media, error) {
   return &m, err
 }
 
-func (m *Media) Save() error {
+func (m Media) Save() error {
   err := DB.C("media").Update(bson.M{"id": m.Id}, m)
   if err == mgo.ErrNotFound {
     return DB.C("media").Insert(m)
@@ -122,7 +122,7 @@ func (m *Media) Save() error {
   return err
 }
 
-func (m *Media) Struct() structs.MediaInfo {
+func (m Media) Struct() structs.MediaInfo {
   return structs.MediaInfo{
     Id:        m.Id,
     Type:      m.Type,

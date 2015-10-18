@@ -81,7 +81,7 @@ func StructCommunityHistory(ch []CommunityHistory) []structs.HistoryItem {
   return payload
 }
 
-func (ch *CommunityHistory) Struct() structs.HistoryItem {
+func (ch CommunityHistory) Struct() structs.HistoryItem {
   media, err := GetMedia(bson.M{"mediaid": ch.MediaId})
   if err != nil {
     fmt.Println(ch.MediaId, err.Error())

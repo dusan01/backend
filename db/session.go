@@ -60,7 +60,7 @@ func GetSession(query interface{}) (*Session, error) {
   return &s, err
 }
 
-func (s *Session) Save() error {
+func (s Session) Save() error {
   err := DB.C("sessions").Update(bson.M{"id": s.Id}, s)
   if err == mgo.ErrNotFound {
     return DB.C("sessions").Insert(s)
@@ -68,6 +68,6 @@ func (s *Session) Save() error {
   return err
 }
 
-func (s *Session) Delete() error {
+func (s Session) Delete() error {
   return DB.C("sessions").Remove(bson.M{"id": s.Id})
 }

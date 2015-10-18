@@ -67,7 +67,7 @@ func StructPlaylists(playlists []Playlist) []structs.PlaylistInfo {
   return payload
 }
 
-func (p *Playlist) Struct() structs.PlaylistInfo {
+func (p Playlist) Struct() structs.PlaylistInfo {
   items, err := p.GetItems()
   if err != nil {
     return structs.PlaylistInfo{}
@@ -82,7 +82,7 @@ func (p *Playlist) Struct() structs.PlaylistInfo {
   }
 }
 
-func (p *Playlist) Save() error {
+func (p Playlist) Save() error {
   err := DB.C("playlists").Update(bson.M{"id": p.Id}, p)
   if err == mgo.ErrNotFound {
     return DB.C("playlists").Insert(p)
@@ -90,11 +90,11 @@ func (p *Playlist) Save() error {
   return err
 }
 
-func (p *Playlist) Delete() error {
+func (p Playlist) Delete() error {
   return DB.C("playlists").Remove(bson.M{"id": p.Id})
 }
 
-func (p *Playlist) Select(u *User) error {
+func (p Playlist) Select(u *User) error {
   playlists, err := u.GetPlaylists()
   if err != nil {
     return nil
@@ -109,7 +109,7 @@ func (p *Playlist) Select(u *User) error {
   return nil
 }
 
-func (p *Playlist) GetItems() ([]PlaylistItem, error) {
+func (p Playlist) GetItems() ([]PlaylistItem, error) {
   var items []PlaylistItem
   err := DB.C("playlistItems").Find(bson.M{"playlistid": p.Id}).Iter().All(&items)
   if err != nil {
@@ -118,7 +118,7 @@ func (p *Playlist) GetItems() ([]PlaylistItem, error) {
   return p.sortItems(items), err
 }
 
-func (p *Playlist) SaveItems(items []PlaylistItem) error {
+func (p Playlist) SaveItems(items []PlaylistItem) error {
   items = p.recalculateItems(items)
   for _, item := range items {
     if err := item.Save(); err != nil {
@@ -128,7 +128,7 @@ func (p *Playlist) SaveItems(items []PlaylistItem) error {
   return nil
 }
 
-func (p *Playlist) sortItems(items []PlaylistItem) []PlaylistItem {
+func (p Playlist) sortItems(items []PlaylistItem) []PlaylistItem {
   payload := make([]PlaylistItem, len(items))
   for _, v := range items {
     payload[v.Order] = v
@@ -136,7 +136,7 @@ func (p *Playlist) sortItems(items []PlaylistItem) []PlaylistItem {
   return payload
 }
 
-func (p *Playlist) recalculateItems(items []PlaylistItem) []PlaylistItem {
+func (p Playlist) recalculateItems(items []PlaylistItem) []PlaylistItem {
   payload := make([]PlaylistItem, len(items))
   for i, item := range items {
     item.Order = i

@@ -70,7 +70,7 @@ func StructPlaylistItems(items []PlaylistItem) structs.PlaylistItems {
   return payload
 }
 
-func (pi *PlaylistItem) Struct() structs.PlaylistItem {
+func (pi PlaylistItem) Struct() structs.PlaylistItem {
   media, err := GetMedia(bson.M{"mediaid": pi.MediaId})
   if err != nil {
     return structs.PlaylistItem{}
@@ -84,7 +84,7 @@ func (pi *PlaylistItem) Struct() structs.PlaylistItem {
   }
 }
 
-func (pi *PlaylistItem) Save() error {
+func (pi PlaylistItem) Save() error {
   err := DB.C("playlistItems").Update(bson.M{"id": pi.Id}, pi)
   if err == mgo.ErrNotFound {
     return DB.C("playlistItems").Insert(pi)

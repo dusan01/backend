@@ -98,19 +98,7 @@ func GetCommunity(query interface{}) (*Community, error) {
   return &c, err
 }
 
-func (c *Community) HasPermission(globalRole int, id string, required int) bool {
-  if globalRole >= 50 {
-    return true
-  }
-
-  if c.HostId == id {
-    return true
-  }
-
-  return false
-}
-
-func (c *Community) Struct() structs.CommunityInfo {
+func (c Community) Struct() structs.CommunityInfo {
   return structs.CommunityInfo{
     Id:              c.Id,
     Url:             c.Url,
@@ -124,19 +112,19 @@ func (c *Community) Struct() structs.CommunityInfo {
   }
 }
 
-func (c *Community) GetStaff() ([]CommunityStaff, error) {
+func (c Community) GetStaff() ([]CommunityStaff, error) {
   var cs []CommunityStaff
   err := DB.C("staff").Find(bson.M{"communityid": c.Id}).Iter().All(&cs)
   return cs, err
 }
 
-func (c *Community) GetHistory(max int) ([]CommunityHistory, error) {
+func (c Community) GetHistory(max int) ([]CommunityHistory, error) {
   var ch []CommunityHistory
   err := DB.C("history").Find(bson.M{"communityid": c.Id}).Limit(max).Iter().All(&ch)
   return ch, err
 }
 
-func (c *Community) Save() error {
+func (c Community) Save() error {
   err := DB.C("communities").Update(bson.M{"id": c.Id}, c)
   if err == mgo.ErrNotFound {
     return DB.C("communities").Insert(c)

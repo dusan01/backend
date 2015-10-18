@@ -1,6 +1,7 @@
 package socket
 
 import (
+  "bytes"
   "encoding/json"
   "github.com/gorilla/websocket"
   "hybris/pool"
@@ -28,7 +29,7 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
     return
   }
 
-  conn.SetReadLimit(512)
+  conn.SetReadLimit(4096)
   conn.SetReadDeadline(time.Now().Add(PongWait))
   conn.SetPongHandler(func(string) error {
     conn.SetReadDeadline(time.Now().Add(PongWait))
@@ -43,7 +44,8 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
       Server string `json:"---conn_294857"`
     }
 
-    if err := json.Unmarshal(msg, &data); err != nil {
+    decoder := json.NewDecoder(bytes.NewReader(msg))
+    if err := decoder.Decode(&data); err != nil {
       conn.Close()
       return
     }

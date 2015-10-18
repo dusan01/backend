@@ -6,6 +6,7 @@ import (
   "golang.org/x/crypto/bcrypt"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
+  "hybris/structs"
   "regexp"
   "strings"
   "sync"
@@ -123,28 +124,30 @@ func (u *User) Save() error {
   return err
 }
 
-func (u *User) GetCommunities() ([]Community, error) {
+func (u User) GetCommunities() ([]Community, error) {
   var communities []Community
   err := DB.C("communities").Find(bson.M{"host": u.Id}).Iter().All(&communities)
   return communities, err
 }
 
-func (u *User) GetActivePlaylist() (*Playlist, error) {
+func (u User) GetActivePlaylist() (*Playlist, error) {
   return GetPlaylist(bson.M{"ownerid": u.Id, "selected": true})
 }
 
-func (u *User) GetPlaylists() ([]Playlist, error) {
+func (u User) GetPlaylists() ([]Playlist, error) {
   var playlists []Playlist
   err := DB.C("playlists").Find(bson.M{"ownerid": u.Id}).Iter().All(&playlists)
   return playlists, err
 }
 
-func (u *User) Public() interface{} {
-  return struct {
-    Id          string `json:"id"`
-    Username    string `json:"username"`
-    DisplayName string `json:"display_name"`
-    GlobalRole  int    `json:"global_role"`
-    Joined      string `json:"joined"`
-  }{u.Id, u.Username, u.DisplayName, u.GlobalRole, u.Created}
+func (u User) Struct() interface{} {
+  return structs.UserInfo{
+    Id:          u.Id,
+    Username:    u.Username,
+    DisplayName: u.DisplayName,
+    GlobalRole:  u.GlobalRole,
+    Points:      u.Points,
+    Created:     u.Created,
+    Updated:     u.Updated,
+  }
 }

@@ -4,7 +4,7 @@ import (
   "sync"
 )
 
-type chat struct {
+type Chat struct {
   sync.Mutex
 
   // Chat Id

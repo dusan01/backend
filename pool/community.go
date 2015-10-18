@@ -4,6 +4,7 @@ import (
   "fmt"
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
+  "hybris/enums"
   "sync"
   "time"
 )
@@ -96,21 +97,23 @@ func (c *Community) Advance() {
   }
 }
 
-func (c *Community) Join(user *db.User) {
+func (c *Community) Join(user *db.User) int {
   c.Lock()
   defer c.Unlock()
 
   for _, p := range c.P {
     if p.Id == user.Id {
-      return
+      // They're already in the community
+      return enums.RESPONSE_CODES.BAD_REQUEST
     }
   }
 
   c.P = append(c.P, user)
-  // Emit event
+  go c.Emit(NewEvent("user.join", user.Struct()))
+  return enums.RESPONSE_CODES.OK
 }
 
-func (c *Community) Leave(user *db.User) {
+func (c *Community) Leave(user *db.User) int {
   c.LeaveWaitlist(user)
   c.Lock()
   defer c.Unlock()
@@ -120,26 +123,24 @@ func (c *Community) Leave(user *db.User) {
       copy(c.P[i:], c.P[i+1:])
       c.P[len(c.P)-1] = nil
       c.P = c.P[:len(c.P)-1]
-      break
+      go c.Emit(NewEvent("user.leave", user.Struct()))
+      return enums.RESPONSE_CODES.OK
     }
   }
 
-  for i, v2 := range c.W {
-    if v2 == user.Id {
-      c.W = append(c.W[:i], c.W[i+1:]...)
-      break
-    }
-  }
-
-  // Done!
+  // They aren't in the community
+  return enums.RESPONSE_CODES.BAD_REQUEST
 }
 
 func (c *Community) Emit(e Message) {
   for _, p := range c.P {
-    go e.Dispatch(Clients[p.Id])
+    if client, ok := Clients[p.Id]; ok {
+      go e.Dispatch(client)
+    }
   }
 }
 
+// Finish this shit
 func (c *Community) Vote(voteType int, user *db.User) {
   c.Lock()
   defer c.Unlock()
@@ -149,19 +150,51 @@ func (c *Community) Vote(voteType int, user *db.User) {
 
 }
 
-func (c *Community) JoinWaitlist(user *db.User) {
+func (c *Community) Move(id string, position int) int {
   c.Lock()
   defer c.Unlock()
 
+  if position >= len(c.W) {
+    // Position is out of bounds
+    return enums.RESPONSE_CODES.BAD_REQUEST
+  }
+
+  current := -1
+  for i, v := range c.W {
+    if v == id {
+      current = i
+      break
+    }
+  }
+  if current < 0 {
+    // User isn't in the waitlist
+    return enums.RESPONSE_CODES.BAD_REQUEST
+  }
+
+  c.W = append(c.W[:current], c.W[current+1:]...)
+  c.W = append(c.W[:position], append([]string{id}, c.W[position:]...)...)
+  go c.Emit(NewEvent("waitlist.update", c.W))
+  return enums.RESPONSE_CODES.OK
+}
+
+func (c *Community) JoinWaitlist(user *db.User) int {
+  c.Lock()
+  defer c.Unlock()
+
+  if len(c.W) > 30 {
+    // Waitlist is full
+    return enums.RESPONSE_CODES.BAD_REQUEST
+  }
+
   if c.M != nil && c.M.UserId == user.Id {
     // They're currently Djing
-    return
+    return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
   for _, id := range c.W {
     if id == user.Id {
       // The user is already in the waitlist
-      return
+      return enums.RESPONSE_CODES.BAD_REQUEST
     }
   }
 
@@ -171,10 +204,11 @@ func (c *Community) JoinWaitlist(user *db.User) {
       c.Advance()
     }()
   }
-  // Done! Emit a waitlist update
+  go c.Emit(NewEvent("waitlist.update", c.W))
+  return enums.RESPONSE_CODES.OK
 }
 
-func (c *Community) LeaveWaitlist(user *db.User) {
+func (c *Community) LeaveWaitlist(user *db.User) int {
   c.Lock()
   defer c.Unlock()
 
@@ -185,16 +219,49 @@ func (c *Community) LeaveWaitlist(user *db.User) {
     c.Advance()
     c.Lock()
     c.C.DjRecycling = recycling
-    return
+    return enums.RESPONSE_CODES.OK
   }
 
   for i, id := range c.W {
     if id == user.Id {
       c.W = append(c.W[:i], c.W[i+1:]...)
-      // Done! Emit a waitlist update
-      return
+      go c.Emit(NewEvent("waitlist.update", c.W))
+      return enums.RESPONSE_CODES.OK
     }
   }
 
-  // The user isn't Djing or in the waitlist, return a BAD_Request (1)
+  return enums.RESPONSE_CODES.BAD_REQUEST
+}
+
+// func (c *Community) SetRole(user *db.User, role int) int {
+//   cs := db.NewCommunityStaff()
+// }
+
+func (c *Community) GetUser(userId string) *db.User {
+  var u *db.User = nil
+  for _, v := range c.P {
+    if v.Id == userId {
+      u = v
+      break
+    }
+  }
+  return u
+}
+
+func (c *Community) HasPermission(user *db.User, required int) bool {
+  staff, err := c.C.GetStaff()
+  if err != nil {
+    return false
+  }
+
+  if user.GlobalRole >= enums.GLOBAL_ROLES.TRIAL_AMBASSADOR {
+    return true
+  }
+
+  for _, u := range staff {
+    if u.UserId == user.Id {
+      return u.Role >= required
+    }
+  }
+  return false
 }

@@ -33,7 +33,7 @@ func Youtube(id string) (string, string, string, string, int, error) {
     return "", "", "", "", 0, errors.New("Youtube API returned no media")
   }
 
-  video := videoResponse.Items[0]
+  item := videoResponse.Items[0]
 
   var (
     image  string
@@ -44,22 +44,22 @@ func Youtube(id string) (string, string, string, string, int, error) {
   )
 
   image = "https://i1.ytimg.com/vi/" + id + "/hqdefault.jpg"
-  title = video.Snippet.Title
-  blurb = video.Snippet.Description
+  title = item.Snippet.Title
+  blurb = item.Snippet.Description
 
   strSplit := strings.Split(title, " - ")
   if len(strSplit) > 1 {
     artist = strSplit[0]
     title = strings.Join(strSplit[1:], " - ")
   } else {
-    artist = video.Snippet.ChannelTitle
+    artist = item.Snippet.ChannelTitle
   }
 
   if len(blurb) > 400 {
     blurb = blurb[:396] + "..."
   }
 
-  dur, err := time.ParseDuration(strings.ToLower(video.ContentDetails.Duration[2:]))
+  dur, err := time.ParseDuration(strings.ToLower(item.ContentDetails.Duration[2:]))
   if err != nil {
     return "", "", "", "", 0, err
   }

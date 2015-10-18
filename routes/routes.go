@@ -7,7 +7,6 @@ import (
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
   "hybris/socket"
-  "io/ioutil"
   "net/http"
 )
 
@@ -52,21 +51,14 @@ func indexHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func signupHanlder(res http.ResponseWriter, req *http.Request) {
-  // Read request
-  body, err := ioutil.ReadAll(req.Body)
-  if err != nil {
-    WriteResponse(res, Response{1, nil})
-    return
-  }
-  defer req.Body.Close()
-
   var data struct {
     Username string `json:"username"`
     Email    string `json:"email"`
     Password string `json:"password"`
   }
 
-  if err := json.Unmarshal(body, &data); err != nil {
+  decoder := json.NewDecoder(req.Body)
+  if err := decoder.Decode(&data); err != nil {
     WriteResponse(res, Response{1, nil})
     return
   }
@@ -105,24 +97,17 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
     HttpOnly: true,
   })
 
-  WriteResponse(res, Response{0, user.Public()})
+  WriteResponse(res, Response{0, user.Struct()})
 }
 
 func loginHanlder(res http.ResponseWriter, req *http.Request) {
-  // Read request
-  body, err := ioutil.ReadAll(req.Body)
-  if err != nil {
-    WriteResponse(res, Response{1, nil})
-    return
-  }
-  defer req.Body.Close()
-
   var data struct {
     Email    string `json:"email"`
     Password string `json:"password"`
   }
 
-  if err := json.Unmarshal(body, &data); err != nil {
+  decoder := json.NewDecoder(req.Body)
+  if err := decoder.Decode(&data); err != nil {
     WriteResponse(res, Response{1, nil})
     return
   }
@@ -157,7 +142,7 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
     HttpOnly: true,
   })
 
-  WriteResponse(res, Response{0, user.Public()})
+  WriteResponse(res, Response{0, user.Struct()})
 }
 
 func socketHandler(res http.ResponseWriter, req *http.Request) {
