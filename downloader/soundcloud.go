@@ -3,7 +3,6 @@ package downloader
 import (
   "encoding/json"
   "errors"
-  "io/ioutil"
   "net/http"
   "strings"
 )
@@ -23,18 +22,14 @@ func Soundcloud(id string) (string, string, string, string, int, error) {
   if err != nil {
     return "", "", "", "", 0, err
   }
-  defer res.Body.Close()
 
   if res.StatusCode != 200 {
     return "", "", "", "", 0, errors.New("Failed to get media")
   }
 
-  body, err := ioutil.ReadAll(res.Body)
-  if err != nil {
-    return "", "", "", "", 0, err
-  }
+  decoder := json.NewDecoder(res.Body)
 
-  if err := json.Unmarshal(body, &out); err != nil {
+  if err := decoder.Decode(&out); err != nil {
     return "", "", "", "", 0, err
   }
 

@@ -765,6 +765,8 @@ func (c *Client) Receive(msg []byte) {
     switch data.Type {
     case 0:
       results, err = searcher.SearchYoutube(data.Query)
+    case 1:
+      results, err = searcher.SearchSoundcloud(data.Query)
     default:
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
