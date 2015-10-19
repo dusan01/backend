@@ -73,7 +73,7 @@ type Media struct {
 }
 
 func NewMedia(id string, platform int) (*Media, error) {
-  if media, err := GetMedia(bson.M{"mediaId": id, "type": platform}); err != mgo.ErrNotFound {
+  if media, err := GetMedia(bson.M{"mid": id, "type": platform}); err != mgo.ErrNotFound {
     return media, err
   }
 

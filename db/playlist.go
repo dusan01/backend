@@ -62,7 +62,7 @@ func GetPlaylist(query interface{}) (*Playlist, error) {
 func StructPlaylists(playlists []Playlist) []structs.PlaylistInfo {
   var payload []structs.PlaylistInfo
   for _, p := range playlists {
-    payload = append(payload, (&p).Struct())
+    payload = append(payload, p.Struct())
   }
   return payload
 }

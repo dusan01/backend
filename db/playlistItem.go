@@ -65,13 +65,13 @@ func GetPlaylistItem(query interface{}) (*PlaylistItem, error) {
 func StructPlaylistItems(items []PlaylistItem) structs.PlaylistItems {
   var payload structs.PlaylistItems
   for _, item := range items {
-    payload = append(payload, (&item).Struct())
+    payload = append(payload, item.Struct())
   }
   return payload
 }
 
 func (pi PlaylistItem) Struct() structs.PlaylistItem {
-  media, err := GetMedia(bson.M{"mediaId": pi.MediaId})
+  media, err := GetMedia(bson.M{"mid": pi.MediaId})
   if err != nil {
     return structs.PlaylistItem{}
   }

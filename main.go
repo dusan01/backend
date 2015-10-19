@@ -14,5 +14,7 @@ func main() {
   router := mux.NewRouter()
   routes.Attach(router)
 
+  fmt.Println("Loaded")
+
   fmt.Println(http.ListenAndServe(":9002", router))
 }
