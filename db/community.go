@@ -114,13 +114,13 @@ func (c Community) Struct() structs.CommunityInfo {
 
 func (c Community) GetStaff() ([]CommunityStaff, error) {
   var cs []CommunityStaff
-  err := DB.C("staff").Find(bson.M{"communityId": c.Id}).Iter().All(&cs)
+  err := DB.C("communityStaff").Find(bson.M{"communityId": c.Id}).Iter().All(&cs)
   return cs, err
 }
 
 func (c Community) GetHistory(max int) ([]CommunityHistory, error) {
   var ch []CommunityHistory
-  err := DB.C("history").Find(bson.M{"communityId": c.Id}).Limit(max).Iter().All(&ch)
+  err := DB.C("communityHistory").Find(bson.M{"communityId": c.Id}).Limit(max).Iter().All(&ch)
   return ch, err
 }
 

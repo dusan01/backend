@@ -60,4 +60,12 @@ var MODERATION_ROLES = struct {
   MANAGER,
   COHOST,
   HOST int
-}{0, 1, 2, 3, 4, 5, 6}
+}{
+  GUEST:   0,
+  USER:    1,
+  DJ:      2,
+  BOUNCER: 3,
+  MANAGER: 4,
+  COHOST:  5,
+  HOST:    6,
+}

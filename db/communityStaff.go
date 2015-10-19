@@ -55,7 +55,7 @@ func GetCommunityStaff(query interface{}) (*CommunityStaff, error) {
 func StructCommunityStaff(cs []CommunityStaff) []structs.StaffItem {
   var payload []structs.StaffItem
   for _, s := range cs {
-    payload = append(payload, (&s).Struct())
+    payload = append(payload, s.Struct())
   }
   return payload
 }

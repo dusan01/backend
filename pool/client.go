@@ -281,6 +281,12 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
+    staff := db.NewCommunityStaff(community.Id, c.U.Id, enums.MODERATION_ROLES.HOST)
+    if err := staff.Save(); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, community.Struct()).Dispatch(c)
   case "community.edit":
     var data struct {
@@ -720,10 +726,23 @@ func (c *Client) Receive(msg []byte) {
 
     c.Unlock()
 
+    // How it works
+    //  Basically, we define a few things first. The amount passed,
+    //  the amount failed and a map to indicate what items have been completed.
+    //
+    //  We then make sure that we only import a max of 200 items and begin.
+    //  We loop through everything, if it fails, increment the failed counter.
+    //  If it succeeds then increment the passed counter and append the data to the
+    //  map we created earlier.
+    //
+    //  Once all of this is complete, we create a new slice which will take all of the completed items.
+    //  We do this by looping through both the values and the keys and appending them to their appropriate
+    //  position.
+
     var (
       m      sync.Mutex
       wg     sync.WaitGroup
-      passed int
+      passed = make(map[int]db.PlaylistItem)
       failed int
     )
 
@@ -731,15 +750,14 @@ func (c *Client) Receive(msg []byte) {
 
     if total > 200 {
       failed = total - 200
+      total = 200
       data.Items = data.Items[:200]
     }
 
-    playlistItems := []db.PlaylistItem{}
-
     wg.Add(len(data.Items))
 
-    for _, item := range data.Items {
-      go func(item dataItem) {
+    for i, item := range data.Items {
+      go func(i int, item dataItem) {
         defer wg.Done()
         media, err := db.NewMedia(item.MediaId, item.Type)
         if err != nil {
@@ -757,17 +775,19 @@ func (c *Client) Receive(msg []byte) {
         }
 
         playlistItem := db.NewPlaylistItem(playlist.Id, media.Title, media.Artist, item.MediaId)
-        m.Lock()
-        defer m.Unlock()
-        playlistItems = append([]db.PlaylistItem{playlistItem}, playlistItems...)
-        passed++
-      }(item)
+        passed[i] = playlistItem
+      }(i, item)
     }
 
     wg.Wait()
 
     c.Lock()
     defer c.Unlock()
+
+    playlistItems := make([]db.PlaylistItem, len(passed))
+    for k, v := range passed {
+      playlistItems[k] = v
+    }
 
     if err := playlist.SaveItems(playlistItems); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
@@ -776,7 +796,7 @@ func (c *Client) Receive(msg []byte) {
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{
       "playlistId": playlist.Id,
-      "passed":     passed,
+      "passed":     len(passed),
       "failed":     failed,
     }).Dispatch(c)
   case "media.search":
