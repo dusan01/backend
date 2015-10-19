@@ -12,22 +12,44 @@ var RESPONSE_CODES = struct {
   ERROR:        3,
 }
 
+var BROADCAST_TYPES = struct {
+  SYSTEM_ALERT,
+  SYSTEM_ANNOUNCEMENT,
+  GLOBAL_CHAT,
+  ADVERTISEMENT int
+}{
+  SYSTEM_ALERT:        0,
+  SYSTEM_ANNOUNCEMENT: 1,
+  GLOBAL_CHAT:         2,
+  ADVERTISEMENT:       3,
+}
+
 var GLOBAL_ROLES = struct {
   DUMMY,
   GUEST,
   USER,
+  BRONXE_DONATOR,
+  SILVER_DONATOR,
+  GOLD_DONATOR,
+  PLATINUM_DONATOR,
   TRIAL_AMBASSADOR,
   AMBASSADOR,
+  TRUSTED_AMBASSADOR,
   ADMIN,
   SERVER int
 }{
-  DUMMY:            0,
-  GUEST:            1,
-  USER:             2,
-  TRIAL_AMBASSADOR: 50,
-  AMBASSADOR:       51,
-  ADMIN:            999,
-  SERVER:           1000,
+  DUMMY:              0,
+  GUEST:              1,
+  USER:               2,
+  BRONXE_DONATOR:     50,
+  SILVER_DONATOR:     51,
+  GOLD_DONATOR:       52,
+  PLATINUM_DONATOR:   53,
+  TRIAL_AMBASSADOR:   400,
+  AMBASSADOR:         401,
+  TRUSTED_AMBASSADOR: 402,
+  ADMIN:              999,
+  SERVER:             1000,
 }
 
 var MODERATION_ROLES = struct {

@@ -16,22 +16,22 @@ type Session struct {
 
   // Primary Key -- Id of the session
   // Not used
-  Id string `json:"id"`
+  Id string `json:"id" bson:"id"`
 
   // 'auth' Cookie value
-  Cookie string `json:"cookie"`
+  Cookie string `json:"cookie" bson:"cookie"`
 
   // User Id this session belongs to
-  UserId string `json:"userId"`
+  UserId string `json:"userId" bson:"userId"`
 
   // Date it expires
-  Expires *time.Time `json:"expires"`
+  Expires *time.Time `json:"expires" bson:"expires"`
 
   // Date it was created
-  Created string `json:"created"`
+  Created string `json:"created" bson:"created"`
 
   // Date it was last updated
-  Updated string `json:"updated"`
+  Updated string `json:"updated" bson:"updated"`
 }
 
 func NewSession(id string) (*Session, error) {

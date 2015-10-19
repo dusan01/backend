@@ -3,6 +3,7 @@ package pool
 import (
   "bytes"
   "encoding/json"
+  "fmt"
   "github.com/gorilla/websocket"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
@@ -93,6 +94,7 @@ func (c *Client) Listen() {
 func (c *Client) Send(data []byte) {
   c.Conn.SetWriteDeadline(time.Now().Add(55 * time.Second))
   if err := c.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
+    fmt.Printf("[FATAL] Failed to send websocket message [[[ %s ]]]\n", err.Error())
     c.Terminate()
   }
 }
@@ -110,9 +112,6 @@ func (c *Client) Receive(msg []byte) {
   }
 
   switch r.Action {
-  case "echo":
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
-
   /*
      Admin
   */
@@ -125,7 +124,10 @@ func (c *Client) Receive(msg []byte) {
       Message string `json:"message"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
       go NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
@@ -150,7 +152,10 @@ func (c *Client) Receive(msg []byte) {
       Reason   string `json:"reason"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
       go NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
@@ -170,6 +175,12 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if client, ok := Clients[user.Id]; ok {
+      if community, ok := Communities[client.Community]; ok {
+        go community.Emit(NewEvent("globalBan", bson.M{
+          "banner":  c.U.Id,
+          "banneee": client.U.Id,
+        }))
+      }
       go client.Terminate()
     }
 
@@ -182,7 +193,10 @@ func (c *Client) Receive(msg []byte) {
       Start bool `json:"start"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
       go NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
@@ -211,7 +225,10 @@ func (c *Client) Receive(msg []byte) {
       Message string `json:"message"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     communityData, err := db.GetCommunity(bson.M{"id": c.Community})
     if err == mgo.ErrNotFound {
@@ -239,7 +256,10 @@ func (c *Client) Receive(msg []byte) {
       Nsfw bool   `json:"nsfw"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -273,7 +293,10 @@ func (c *Client) Receive(msg []byte) {
       Nsfw            *bool   `json:"nsfw"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -343,12 +366,15 @@ func (c *Client) Receive(msg []byte) {
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, communityData.Struct()).Dispatch(c)
   case "community.getHistory":
     var data struct {
-      Url string `json:"url"`
+      Id string `json:"id"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-    communityData, err := db.GetCommunity(bson.M{"url": data.Url})
+    communityData, err := db.GetCommunity(bson.M{"id": data.Id})
     if err == mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -366,12 +392,15 @@ func (c *Client) Receive(msg []byte) {
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, db.StructCommunityHistory(history)).Dispatch(c)
   case "community.getInfo":
     var data struct {
-      Url string `json:"url"`
+      Id string `json:"id"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-    communityData, err := db.GetCommunity(bson.M{"url": data.Url})
+    communityData, err := db.GetCommunity(bson.M{"id": data.Id})
     if err == mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -383,12 +412,15 @@ func (c *Client) Receive(msg []byte) {
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, communityData.Struct()).Dispatch(c)
   case "community.getStaff":
     var data struct {
-      Url string `json:"url"`
+      Id string `json:"id"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-    communityData, err := db.GetCommunity(bson.M{"url": data.Url})
+    communityData, err := db.GetCommunity(bson.M{"id": data.Id})
     if err == mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -406,12 +438,15 @@ func (c *Client) Receive(msg []byte) {
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, db.StructCommunityStaff(staff)).Dispatch(c)
   case "community.getState":
     var data struct {
-      Url string `json:"url"`
+      Id string `json:"id"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-    communityData, err := db.GetCommunity(bson.M{"url": data.Url})
+    communityData, err := db.GetCommunity(bson.M{"id": data.Id})
     if err == mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -421,24 +456,20 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community := NewCommunity(communityData)
-    state := structs.CommunityState{
-      Waitlist: community.W,
-    }
-    if community.M != nil {
-      state.NowPlaying = community.M.Struct()
-    } else {
-      state.NowPlaying = structs.HistoryItem{}
-    }
+    state := community.GetState()
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, state).Dispatch(c)
   case "community.getUsers":
     var data struct {
-      Url string `json:"url"`
+      Id string `json:"id"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-    communityData, err := db.GetCommunity(bson.M{"url": data.Url})
+    communityData, err := db.GetCommunity(bson.M{"id": data.Id})
     if err == mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -459,7 +490,10 @@ func (c *Client) Receive(msg []byte) {
       Url string `json:"url"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -479,24 +513,18 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community := NewCommunity(communityData)
-    state := structs.CommunityState{
-      Waitlist: community.W,
-    }
-    if community.M != nil {
-      state.NowPlaying = community.M.Struct()
-    } else {
-      state.NowPlaying = structs.HistoryItem{}
-    }
-
     c.Community = communityData.Id
     community.Join(c.U)
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{"id": community.C.Id}).Dispatch(c)
   case "community.taken":
     var data struct {
       Url string `json:"url"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     _, err := db.GetCommunity(bson.M{"url": data.Url})
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{"taken": err == nil})
@@ -538,7 +566,7 @@ func (c *Client) Receive(msg []byte) {
 
     community := NewCommunity(communityData)
 
-    NewAction(r.Id, community.Join(c.U), r.Action, nil).Dispatch(c)
+    NewAction(r.Id, community.JoinWaitlist(c.U), r.Action, nil).Dispatch(c)
   case "dj.leave":
     c.Lock()
     defer c.Unlock()
@@ -568,12 +596,12 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community := NewCommunity(communityData)
-    if community.M != nil && community.M.UserId == c.U.Id {
+    if community.M != nil && community.M.DjId == c.U.Id {
       community.Advance()
-      NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil)
+      NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
       return
     }
-    NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil)
+    NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
 
   /*
      Media
@@ -585,7 +613,10 @@ func (c *Client) Receive(msg []byte) {
       PlaylistId string `json:"playlistId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -634,9 +665,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    item := db.NewPlaylistItem(data.PlaylistId, media.Title, media.Artist, data.MediaId)
+    playlistItem := db.NewPlaylistItem(data.PlaylistId, media.Title, media.Artist, data.MediaId)
 
-    playlistItems = append([]db.PlaylistItem{item}, playlistItems...)
+    playlistItems = append([]db.PlaylistItem{playlistItem}, playlistItems...)
     if err := playlist.SaveItems(playlistItems); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
       return
@@ -653,7 +684,10 @@ func (c *Client) Receive(msg []byte) {
       Items        []dataItem `json:"items"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
 
@@ -740,14 +774,10 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, struct {
-      PlaylistId string `json:"playlistId"`
-      Passed     int    `json:"passed"`
-      Failed     int    `json:"failed"`
-    }{
-      playlist.Id,
-      passed,
-      failed,
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{
+      "playlistId": playlist.Id,
+      "passed":     passed,
+      "failed":     failed,
     }).Dispatch(c)
   case "media.search":
     var data struct {
@@ -755,7 +785,10 @@ func (c *Client) Receive(msg []byte) {
       Query string `json:"query"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     var (
       results []structs.SearchResult
@@ -786,7 +819,10 @@ func (c *Client) Receive(msg []byte) {
       UserId string `json:"userId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -850,7 +886,10 @@ func (c *Client) Receive(msg []byte) {
       Id string `json:"id"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -871,9 +910,10 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    community.Emit(NewEvent("chat.delete", struct {
-      Id string `json:"id"`
-    }{data.Id}))
+    community.Emit(NewEvent("chat.delete", bson.M{
+      "id":      data.Id,
+      "deleter": c.U.Id,
+    }))
   case "moderation.forceSkip":
     c.Lock()
     defer c.Unlock()
@@ -900,7 +940,10 @@ func (c *Client) Receive(msg []byte) {
       UserId string `json:"userId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -947,7 +990,10 @@ func (c *Client) Receive(msg []byte) {
       Position int    `json:"position"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -982,7 +1028,10 @@ func (c *Client) Receive(msg []byte) {
       UserId string `json:"userId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1025,7 +1074,10 @@ func (c *Client) Receive(msg []byte) {
       Role   int    `json:"role"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1061,7 +1113,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    cs, err := db.GetCommunityStaff(bson.M{"communityid": c.Community, "userid": data.UserId})
+    cs, err := db.GetCommunityStaff(bson.M{"communityId": c.Community, "userId": data.UserId})
     if err == mgo.ErrNotFound {
       cs = db.NewCommunityStaff(communityData.Id, user.Id, data.Role)
     } else if err != nil {
@@ -1096,7 +1148,10 @@ func (c *Client) Receive(msg []byte) {
       PlaylistId string `json:"playlistId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1126,7 +1181,10 @@ func (c *Client) Receive(msg []byte) {
       Name string `json:"name"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1164,7 +1222,10 @@ func (c *Client) Receive(msg []byte) {
       PlaylistId string `json:"playlistId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1200,7 +1261,10 @@ func (c *Client) Receive(msg []byte) {
       Name       *string `json:"name"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1239,7 +1303,10 @@ func (c *Client) Receive(msg []byte) {
       PlaylistId string `json:"playlistId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1285,7 +1352,10 @@ func (c *Client) Receive(msg []byte) {
       PlaylistItemId string `json:"playlistItemId"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1320,7 +1390,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community := NewCommunity(communityData)
-    if community.M != nil && community.M.PlaylistItemId == data.PlaylistItemId {
+    if community.H != nil && community.H.PlaylistItemId == data.PlaylistItemId {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
@@ -1349,7 +1419,10 @@ func (c *Client) Receive(msg []byte) {
       Title          *string `json:"title"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1387,7 +1460,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community := NewCommunity(communityData)
-    if community.M != nil && community.M.PlaylistItemId == data.PlaylistItemId {
+    if community.H != nil && community.H.PlaylistItemId == data.PlaylistItemId {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
@@ -1422,7 +1495,10 @@ func (c *Client) Receive(msg []byte) {
       Position       int    `json:"position"`
     }
 
-    _ = json.Unmarshal(r.Data, &data)
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     c.Lock()
     defer c.Unlock()
@@ -1474,91 +1550,122 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
-    /*
-       Vote
-    */ /*
-       case "vote.woot":
-         c.Lock()
-         defer c.Unlock()
 
-         if c.U.GlobalRole < 2 {
-           NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
-           return
-         }
+  /*
+     Vote
+  */
+  case "vote.woot":
+    c.Lock()
+    defer c.Unlock()
 
-         ommunityData, err := db.GetCommunity(bson.M{"id": c.Community})
-         if err == mgo.ErrNotFound {
-           NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-           return
-         } else if err != nil {
-           NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
-           return
-         }
+    communityData, err := db.GetCommunity(bson.M{"id": c.Community})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         community := NewCommunity(communityData)
-         if community.M != nil && community.M.PlaylistItemId == data.PlaylistItemId {
-           NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-           return
-         }
+    community := NewCommunity(communityData)
+    if community.M != nil && community.M.DjId == c.U.Id {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         community.Vote(1)
-       case "vote.meh":
-         c.Lock()
-         defer c.Unlock()
+    NewAction(r.Id, community.Vote(c.U, "woot"), r.Action, nil).Dispatch(c)
+  case "vote.meh":
+    c.Lock()
+    defer c.Unlock()
 
-         if c.U.GlobalRole < 2 {
-           NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
-           return
-         }
+    communityData, err := db.GetCommunity(bson.M{"id": c.Community})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         ommunityData, err := db.GetCommunity(bson.M{"id": c.Community})
-         if err == mgo.ErrNotFound {
-           NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-           return
-         } else if err != nil {
-           NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
-           return
-         }
+    community := NewCommunity(communityData)
+    if community.M != nil && community.M.DjId == c.U.Id {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         community := NewCommunity(communityData)
-         if community.M != nil && community.M.PlaylistItemId == data.PlaylistItemId {
-           NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-           return
-         }
+    NewAction(r.Id, community.Vote(c.U, "meh"), r.Action, nil).Dispatch(c)
+  case "vote.save":
+    var data struct {
+      PlaylistId string `json:"playlistId"`
+    }
 
-         community.Vote(-1)
-       case "vote.save":
-         var data struct {
-           PlaylistItemId string `json:"playlistItemId"`
-         }
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         _ = json.Unmarshal(r.Data, &data)
+    c.Lock()
+    defer c.Unlock()
 
-         c.Lock()
-         defer c.Unlock()
+    communityData, err := db.GetCommunity(bson.M{"id": c.Community})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         if c.U.GlobalRole < 2 {
-           NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
-           return
-         }
+    community := NewCommunity(communityData)
+    if community.M != nil && community.M.DjId == c.U.Id {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         ommunityData, err := db.GetCommunity(bson.M{"id": c.Community})
-         if err == mgo.ErrNotFound {
-           NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-           return
-         } else if err != nil {
-           NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
-           return
-         }
+    // Add the currently playing media to the playlist
 
-         community := NewCommunity(communityData)
-         if community.M != nil && community.M.PlaylistItemId == data.PlaylistItemId {
-           NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-           return
-         }
+    playlist, err := db.GetPlaylist(bson.M{"id": data.PlaylistId})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
 
+    if playlist.OwnerId != c.U.Id {
+      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      return
+    }
 
+    playlistItems, err := playlist.GetItems()
+    if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
 
-         community.Vote(0, c.U)*/
+    if len(playlistItems) >= 200 {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    // Should add mutex to prevent last second fuck ups
+
+    for _, item := range playlistItems {
+      if item.MediaId == community.M.Media.MediaId {
+        NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+        return
+      }
+    }
+
+    playlistItem := db.NewPlaylistItem(data.PlaylistId, community.M.Media.Title, community.M.Media.Artist, community.M.Media.MediaId)
+
+    playlistItems = append([]db.PlaylistItem{playlistItem}, playlistItems...)
+    if err := playlist.SaveItems(playlistItems); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    NewAction(r.Id, community.Vote(c.U, "save"), r.Action, nil).Dispatch(c)
   }
 }

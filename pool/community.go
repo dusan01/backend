@@ -5,6 +5,7 @@ import (
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
   "hybris/enums"
+  "hybris/structs"
   "sync"
   "time"
 )
@@ -12,7 +13,8 @@ import (
 type Community struct {
   sync.Mutex
   C     *db.Community
-  M     *db.CommunityHistory
+  M     *structs.CommunityPlayingInfo
+  H     *db.CommunityHistory
   P     []*db.User
   W     []string
   Timer *time.Timer
@@ -28,6 +30,7 @@ func NewCommunity(community *db.Community) *Community {
   c := &Community{
     C:     community,
     M:     nil,
+    H:     nil,
     P:     []*db.User{},
     W:     []string{},
     Timer: time.NewTimer(0),
@@ -38,6 +41,13 @@ func NewCommunity(community *db.Community) *Community {
   return c
 }
 
+func (c *Community) GetState() structs.CommunityState {
+  return structs.CommunityState{
+    Waitlist:   c.W,
+    NowPlaying: c.M,
+  }
+}
+
 func (c *Community) Advance() {
   c.Lock()
   defer c.Unlock()
@@ -45,7 +55,7 @@ func (c *Community) Advance() {
   _ = c.Timer.Stop()
 
   if c.M != nil && c.C.DjRecycling {
-    c.W = append(c.W, c.M.UserId)
+    c.W = append(c.W, c.M.DjId)
   }
 
   c.M = nil
@@ -78,22 +88,33 @@ func (c *Community) Advance() {
       return
     }
 
-    media, err := db.GetMedia(bson.M{"mediaid": playlistItem.MediaId})
+    media, err := db.GetMedia(bson.M{"mid": playlistItem.MediaId})
     if err != nil {
       fmt.Printf("[FATAL] Failed to retrieve media. Details: [[[ %s ||| %s ]]]\n", playlistItem.MediaId, err.Error())
       return
     }
 
-    c.M = db.NewCommunityHistory(c.C.Id, c.W[0], playlistItem.Id, playlistItem.MediaId)
-    c.M.Artist = playlistItem.Artist
-    c.M.Title = playlistItem.Title
+    c.H = db.NewCommunityHistory(c.C.Id, c.W[0], playlistItem.Id, playlistItem.MediaId)
+    c.H.Artist = playlistItem.Artist
+    c.H.Title = playlistItem.Title
+
+    c.M = &structs.CommunityPlayingInfo{
+      DjId:  c.W[0],
+      Media: structs.ResolvedMediaInfo{media.Struct(), playlistItem.Artist, playlistItem.Title},
+      Votes: structs.Votes{
+        []string{},
+        []string{},
+        []string{},
+      },
+    }
 
     c.W = c.W[1:]
     c.Timer = time.AfterFunc(time.Duration(media.Length)*time.Second, c.Advance)
   }
 
   if c.M != nil {
-    go c.Emit(NewEvent("advance", c.M.Struct()))
+    go c.Emit(NewEvent("waitlist.update", c.W))
+    go c.Emit(NewEvent("advance", c.M))
   }
 }
 
@@ -141,13 +162,53 @@ func (c *Community) Emit(e Message) {
 }
 
 // Finish this shit
-func (c *Community) Vote(voteType int, user *db.User) {
+func (c *Community) Vote(user *db.User, voteType string) int {
   c.Lock()
   defer c.Unlock()
   if c.M == nil {
-    return
+    return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
+  if voteType == "save" {
+    for _, id := range c.M.Votes.Save {
+      if id == user.Id {
+        return enums.RESPONSE_CODES.BAD_REQUEST
+      }
+    }
+    c.M.Votes.Save = append(c.M.Votes.Save, user.Id)
+    voteType = "woot"
+  }
+
+  for i, id := range c.M.Votes.Woot {
+    if id == user.Id {
+      if voteType == "woot" {
+        return enums.RESPONSE_CODES.BAD_REQUEST
+      }
+      c.M.Votes.Woot = append(c.M.Votes.Woot[:i], c.M.Votes.Woot[i+1:]...)
+      break
+    }
+  }
+
+  for i, id := range c.M.Votes.Meh {
+    if id == user.Id {
+      if voteType == "meh" {
+        return enums.RESPONSE_CODES.BAD_REQUEST
+      }
+      c.M.Votes.Meh = append(c.M.Votes.Meh[:i], c.M.Votes.Meh[i+1:]...)
+      break
+    }
+  }
+
+  switch voteType {
+  case "woot":
+    c.M.Votes.Woot = append(c.M.Votes.Woot, user.Id)
+  case "meh":
+    c.M.Votes.Meh = append(c.M.Votes.Meh, user.Id)
+  }
+
+  return enums.RESPONSE_CODES.OK
+
+  // Emit a vote update
 }
 
 func (c *Community) Move(id string, position int) int {
@@ -186,7 +247,7 @@ func (c *Community) JoinWaitlist(user *db.User) int {
     return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
-  if c.M != nil && c.M.UserId == user.Id {
+  if c.M != nil && c.M.DjId == user.Id {
     // They're currently Djing
     return enums.RESPONSE_CODES.BAD_REQUEST
   }
@@ -212,7 +273,7 @@ func (c *Community) LeaveWaitlist(user *db.User) int {
   c.Lock()
   defer c.Unlock()
 
-  if c.M != nil && c.M.UserId == user.Id {
+  if c.M != nil && c.M.DjId == user.Id {
     recycling := c.C.DjRecycling
     c.C.DjRecycling = false
     c.Unlock()

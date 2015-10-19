@@ -10,7 +10,7 @@ import (
 )
 
 const (
-  PingPeriod time.Duration = 30 * time.Second
+  PingPeriod time.Duration = 10 * time.Second
   PongWait   time.Duration = 55 * time.Second
   WriteWait  time.Duration = 55 * time.Second
 )

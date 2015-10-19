@@ -15,27 +15,27 @@ type Playlist struct {
   sync.Mutex
 
   // Playist Id
-  Id string `json:"id"`
+  Id string `json:"id" bson:"id"`
 
   // Playlist name
   // Validation
   //  1-30 Characters
-  Name string `json:"name"`
+  Name string `json:"name" bson:"name"`
 
   // /db/user/id
-  OwnerId string `json:"ownerId"`
+  OwnerId string `json:"ownerId" bson:"ownerId"`
 
   // Selected
   // Whether or not the playlist is selected
   // Validation
   //  Only one playlist can be selected at a time
-  Selected bool `json:"selected"`
+  Selected bool `json:"selected" bson:"selected"`
 
   // The date this objects was created in RFC 3339
-  Created string `json:"created"`
+  Created string `json:"created" bson:"created"`
 
   // The date this object was updated last in RFC 3339
-  Updated string `json:"updated"`
+  Updated string `json:"updated" bson:"updated"`
 }
 
 func NewPlaylist(name, ownerId string, selected bool) (*Playlist, error) {
@@ -111,7 +111,7 @@ func (p Playlist) Select(u *User) error {
 
 func (p Playlist) GetItems() ([]PlaylistItem, error) {
   var items []PlaylistItem
-  err := DB.C("playlistItems").Find(bson.M{"playlistid": p.Id}).Iter().All(&items)
+  err := DB.C("playlistItems").Find(bson.M{"playlistId": p.Id}).Iter().All(&items)
   if err != nil {
     return items, err
   }

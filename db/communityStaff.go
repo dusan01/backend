@@ -14,25 +14,25 @@ type CommunityStaff struct {
   sync.Mutex
 
   // Community Staff Id
-  Id string `json:"id"`
+  Id string `json:"id" bson:"id"`
 
   // Community Id
   // See /db/community/id
-  CommunityId string `json:"communityId"`
+  CommunityId string `json:"communityId" bson:"communityId"`
 
   // User Id
   // See /db/user/id
-  UserId string `json:"userId"`
+  UserId string `json:"userId" bson:"userId"`
 
   // Role
   // See enum/COMMUNITY_ROLES
-  Role int `json:"role"`
+  Role int `json:"role" bson:"role"`
 
   // The date this objects was created in RFC 3339
-  Created string `json:"created"`
+  Created string `json:"created" bson:"created"`
 
   // The date this object was updated last in RFC 3339
-  Updated string `json:"updated"`
+  Updated string `json:"updated" bson:"updated"`
 }
 
 func NewCommunityStaff(community string, user string, role int) *CommunityStaff {

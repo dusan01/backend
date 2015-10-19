@@ -3,7 +3,7 @@ package structs
 import ()
 
 type Votes struct {
-  Woot int `json:"woot"`
-  Meh  int `json:"meh"`
-  Save int `json:"save"`
+  Woot []string `json:"woot"`
+  Meh  []string `json:"meh"`
+  Save []string `json:"save"`
 }

@@ -125,7 +125,7 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   }
 
   // Get session
-  session, err := db.GetSession(bson.M{"userid": user.Id})
+  session, err := db.GetSession(bson.M{"userId": user.Id})
   if err != nil {
     session, err = db.NewSession(user.Id)
     if err != nil {

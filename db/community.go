@@ -16,51 +16,51 @@ type Community struct {
   sync.Mutex
 
   // Community Id
-  Id string `json:"id"`
+  Id string `json:"id" bson:"id"`
 
   // Room URL
   // Validation
   //  2-25 Characters
   //  Lowercased
   //  Must be a-z 0-9 and '-'
-  Url string `json:"url"`
+  Url string `json:"url" bson:"url"`
 
   // Room name
   // Validation
   //  2-30 Characters
-  Name string `json:"name"`
+  Name string `json:"name" bson:"name"`
 
   // The id of the host
   // db/user/id
-  HostId string `json:"host_id"`
+  HostId string `json:"hostId" bson:"hostId"`
 
   // Community description
   // Validation
   //  0-1000 Characters
-  Description string `json:"description"`
+  Description string `json:"description" bson:"description"`
 
   // Welcome Message
   // Validation
   //  0-300 Characters
-  WelcomeMessage string `json:"welcomeMessage"`
+  WelcomeMessage string `json:"welcomeMessage" bson:"welcomeMessage"`
 
   // Waitlist Locked
   // Whether or not the waitlist is emabled
-  WaitlistEnabled bool `json:"waitlistEnabled"`
+  WaitlistEnabled bool `json:"waitlistEnabled" bson:"waitlistEnabled"`
 
   // Dj Rotation
   // Whether Dj Recycling is enabled or not
-  DjRecycling bool `json:"djRecycling"`
+  DjRecycling bool `json:"djRecycling" bson:"djRecycling"`
 
   // NSFW
   // Whether or not the community plays NSFW content or not
-  Nsfw bool `json:"nsfw"`
+  Nsfw bool `json:"nsfw" bson:"nsfw"`
 
   // The date this objects was created in RFC 3339
-  Created string `json:"created"`
+  Created string `json:"created" bson:"created"`
 
   // The date this object was updated last in RFC 3339
-  Updated string `json:"updated"`
+  Updated string `json:"updated" bson:"updated"`
 }
 
 func NewCommunity(host, url, name string, nsfw bool) (*Community, error) {
@@ -114,13 +114,13 @@ func (c Community) Struct() structs.CommunityInfo {
 
 func (c Community) GetStaff() ([]CommunityStaff, error) {
   var cs []CommunityStaff
-  err := DB.C("staff").Find(bson.M{"communityid": c.Id}).Iter().All(&cs)
+  err := DB.C("staff").Find(bson.M{"communityId": c.Id}).Iter().All(&cs)
   return cs, err
 }
 
 func (c Community) GetHistory(max int) ([]CommunityHistory, error) {
   var ch []CommunityHistory
-  err := DB.C("history").Find(bson.M{"communityid": c.Id}).Limit(max).Iter().All(&ch)
+  err := DB.C("history").Find(bson.M{"communityId": c.Id}).Limit(max).Iter().All(&ch)
   return ch, err
 }
 

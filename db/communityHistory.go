@@ -14,48 +14,48 @@ type CommunityHistory struct {
   sync.Mutex
 
   // Community History Id
-  Id string `json:"id"`
+  Id string `json:"id" bson:"id"`
 
   // Community Id
   // See /db/community/id
-  CommunityId string `json:"communityId"`
+  CommunityId string `json:"communityId" bson:"communityId"`
 
   // User Id
   // The user who played the media
   // See /db/user/id
-  UserId string `json:"userId"`
+  UserId string `json:"userId" bson:"userId"`
 
   // Playlist Item Id
   // The playlist item id
   // See /db/playlistItem/Id
-  PlaylistItemId string `json:"playlistItemId"`
+  PlaylistItemId string `json:"playlistItemId" bson:"playlistItemId"`
 
   // Global media id
   // See /db/media/id
-  MediaId string `json:"mediaId"`
+  MediaId string `json:"mediaId" bson:"mediaId"`
 
   // Title of the media inherited from PlaylistItem
   // See /db/playlistItem/title
-  Title string `json:"title"`
+  Title string `json:"title" bson:"title"`
 
   // Artist of the media inherited from PlaylistItem
   // See /db/playlistItem/artist
-  Artist string `json:"artist"`
+  Artist string `json:"artist" bson:"artist"`
 
   // Ammount of times people have wooted this
-  Woots int `json:"woots"`
+  Woots int `json:"woots" bson:"woots"`
 
   // Amount of times people have meh'd this
-  Mehs int `json:"mehs"`
+  Mehs int `json:"mehs" bson:"mehs"`
 
   // Amount of times people have saved this
-  Saves int `json:"saves"`
+  Saves int `json:"saves" bson:"saves"`
 
   // The date this objects was created in RFC 3339
-  Created string `json:"created"`
+  Created string `json:"created" bson:"created"`
 
   // The date this object was updated last in RFC 3339
-  Updated string `json:"updated"`
+  Updated string `json:"updated" bson:"updated"`
 }
 
 func NewCommunityHistory(communityId, userId, playlistItemId, mediaId string) *CommunityHistory {
@@ -82,7 +82,7 @@ func StructCommunityHistory(ch []CommunityHistory) []structs.HistoryItem {
 }
 
 func (ch CommunityHistory) Struct() structs.HistoryItem {
-  media, err := GetMedia(bson.M{"mediaid": ch.MediaId})
+  media, err := GetMedia(bson.M{"mediaId": ch.MediaId})
   if err != nil {
     fmt.Println(ch.MediaId, err.Error())
     return structs.HistoryItem{}
@@ -95,7 +95,7 @@ func (ch CommunityHistory) Struct() structs.HistoryItem {
       ch.Artist,
       ch.Title,
     },
-    Votes: structs.Votes{
+    Votes: structs.VoteCount{
       Woot: ch.Woots,
       Meh:  ch.Mehs,
       Save: ch.Saves,

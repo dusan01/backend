@@ -13,29 +13,29 @@ type GlobalBan struct {
   sync.Mutex
 
   // Global Ban Id
-  Id string `json:"id"`
+  Id string `json:"id" bson:"id"`
 
   // Bannee Id
   // See /db/user/id
-  BanneeId string `json:"baneeId"`
+  BanneeId string `json:"baneeId" bson:"baneeId"`
 
   // Banner Id
   // See /db/user/id
-  BannerId string `json:"bannerId"`
+  BannerId string `json:"bannerId" bson:"bannerId"`
 
   // Reason for the ban
   // Validation
   //  0-500 Characters
-  Reason string `json:"reason"`
+  Reason string `json:"reason" bson:"reason"`
 
   // Until time
-  Until *time.Time `json:"until"`
+  Until *time.Time `json:"until" bson:"until"`
 
   // The date this objects was created in RFC 3339
-  Created string `json:"created"`
+  Created string `json:"created" bson:"created"`
 
   // The date this object was updated last in RFC 3339
-  Updated string `json:"updated"`
+  Updated string `json:"updated" bson:"updated"`
 }
 
 func NewGlobalBan(bannee, banner, reason string, duration int) GlobalBan {
