@@ -12,9 +12,9 @@ import (
 
 func Attach(router *mux.Router) {
   router.HandleFunc("/", indexHandler)
-  router.HandleFunc("/_/signup", signupHanlder).Methods("POST")
-  router.HandleFunc("/_/login", loginHanlder).Methods("POST")
-  router.HandleFunc("/_/socket", socketHandler)
+  router.HandleFunc("/signup", signupHanlder).Methods("POST")
+  router.HandleFunc("/login", loginHanlder).Methods("POST")
+  router.HandleFunc("/socket", socketHandler)
 }
 
 // Helper methods for writing
@@ -47,7 +47,7 @@ func WriteResponse(res http.ResponseWriter, response Response) {
 // Route handlers
 
 func indexHandler(res http.ResponseWriter, req *http.Request) {
-  http.Redirect(res, req, "https://turn.fm/", 301)
+  res.Write([]byte("turn.fm backend"))
 }
 
 func signupHanlder(res http.ResponseWriter, req *http.Request) {
