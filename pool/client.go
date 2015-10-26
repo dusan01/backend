@@ -1628,6 +1628,8 @@ func (c *Client) Receive(msg []byte) {
       if pi.Id == data.PlaylistItemId {
         index = i
         item = pi
+        playlistItems = append(playlistItems[:index], playlistItems[index+1:]...)
+        break
       }
     }
 
@@ -1636,7 +1638,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    playlistItems = append(playlistItems[:index], append([]db.PlaylistItem{item}, playlistItems[index:]...)...)
+    playlistItems = append(playlistItems[:data.Position], append([]db.PlaylistItem{item}, playlistItems[data.Position:]...)...)
 
     if err := playlist.SaveItems(playlistItems); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
