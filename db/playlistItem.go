@@ -92,3 +92,7 @@ func (pi PlaylistItem) Save() error {
   }
   return err
 }
+
+func (pi PlaylistItem) Delete() error {
+  return DB.C("playlistItems").Remove(bson.M{"id": pi.Id})
+}

@@ -1489,15 +1489,16 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    var index int
     for i, pi := range playlistItems {
       if pi.Id == data.PlaylistItemId {
-        index = i
+        if err := pi.Delete(); err != nil {
+          NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+          return
+        }
+        playlistItems = append(playlistItems[:i], playlistItems[:i+1]...)
+        break
       }
     }
-
-    //playlistItems, playlistItems[len(playlistItems)-1] = append(playlistItems[:index], playlistItems[index+1:]...), nil
-    playlistItems = append(playlistItems[:index], playlistItems[:index+1]...)
 
     if err := playlist.SaveItems(playlistItems); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
@@ -1623,29 +1624,22 @@ func (c *Client) Receive(msg []byte) {
     }
 
     var item db.PlaylistItem
-    var index int = -1
     for i, pi := range playlistItems {
       if pi.Id == data.PlaylistItemId {
-        index = i
         item = pi
-        playlistItems = append(playlistItems[:index], playlistItems[index+1:]...)
-        break
+        playlistItems = append(playlistItems[:i], playlistItems[i+1:]...)
+        playlistItems = append(playlistItems[:data.Position], append([]db.PlaylistItem{item}, playlistItems[data.Position:]...)...)
+
+        if err := playlist.SaveItems(playlistItems); err != nil {
+          NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+          return
+        }
+        NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+        return
       }
     }
 
-    if index < 0 {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    playlistItems = append(playlistItems[:data.Position], append([]db.PlaylistItem{item}, playlistItems[data.Position:]...)...)
-
-    if err := playlist.SaveItems(playlistItems); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+    NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
 
   /*
      Vote
