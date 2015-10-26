@@ -1624,22 +1624,28 @@ func (c *Client) Receive(msg []byte) {
     }
 
     var item db.PlaylistItem
+    found := false
     for i, pi := range playlistItems {
       if pi.Id == data.PlaylistItemId {
+        found = true
         item = pi
         playlistItems = append(playlistItems[:i], playlistItems[i+1:]...)
         playlistItems = append(playlistItems[:data.Position], append([]db.PlaylistItem{item}, playlistItems[data.Position:]...)...)
-
-        if err := playlist.SaveItems(playlistItems); err != nil {
-          NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
-          return
-        }
-        NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
-        return
+        break
       }
     }
 
-    NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+    if !found {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if err := playlist.SaveItems(playlistItems); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+    return
 
   /*
      Vote

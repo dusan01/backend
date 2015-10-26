@@ -15,6 +15,7 @@ import (
   "hybris/socket"
   "net/http"
   "net/url"
+  "time"
 )
 
 func init() {
@@ -96,7 +97,9 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
     http.SetCookie(res, &http.Cookie{
       Name:     "auth",
       Value:    session.Cookie,
+      Path:     "/",
       Domain:   ".turn.fm",
+      Expires:  time.Now().Add(365 * 24 * time.Hour),
       Secure:   true,
       HttpOnly: true,
     })
@@ -146,7 +149,9 @@ func signupSocialHandler(res http.ResponseWriter, req *http.Request) {
   http.SetCookie(res, &http.Cookie{
     Name:     "auth",
     Value:    session.Cookie,
+    Path:     "/",
     Domain:   ".turn.fm",
+    Expires:  time.Now().Add(365 * 24 * time.Hour),
     Secure:   true,
     HttpOnly: true,
   })
@@ -221,7 +226,9 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   http.SetCookie(res, &http.Cookie{
     Name:     "auth",
     Value:    session.Cookie,
+    Path:     "/",
     Domain:   ".turn.fm",
+    Expires:  time.Now().Add(365 * 24 * time.Hour),
     Secure:   true,
     HttpOnly: true,
   })
@@ -265,7 +272,9 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   http.SetCookie(res, &http.Cookie{
     Name:     "auth",
     Value:    session.Cookie,
+    Path:     "/",
     Domain:   ".turn.fm",
+    Expires:  time.Now().Add(365 * 24 * time.Hour),
     Secure:   true,
     HttpOnly: true,
   })
