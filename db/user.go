@@ -3,7 +3,6 @@ package db
 import (
   "code.google.com/p/go-uuid/uuid"
   "errors"
-  "golang.org/x/crypto/bcrypt"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/structs"
@@ -50,10 +49,10 @@ type User struct {
   Points int `json:"points" bson:"points"`
 
   // Facebook user ID used for facebook logins
-  FacebookId string `json:"facebookId" bson:"facebookId"`
+  FacebookToken string `json:"facebookToken" bson:"facebookToken"`
 
   // Twitter user ID used for twitter logins
-  TwitterId string `json:"twitterId" bson:"twitterId"`
+  TwitterToken string `json:"twitterToken" bson:"twitterToken"`
 
   // A premium currency
   // Used to purchase fancy items and features
@@ -66,43 +65,25 @@ type User struct {
   Updated string `json:"updated" bson:"updated"`
 }
 
-func NewUser(username, email, password string) (*User, error) {
+func NewUser(username string) (*User, error) {
   c := DB.C("users")
   displayName := username
   username = strings.ToLower(username)
-  email = strings.ToLower(email)
 
   // Validate info
   if length := len(username); length < 2 || length > 20 || !regexp.MustCompile(`^[a-zA-Z0-9_\-\.]+$`).MatchString(username) {
     return nil, errors.New("Invalid username")
-  }
-  if length := len(email); length > 100 || !regexp.MustCompile(`^\w+@[a-zA-Z_]+?\.[a-zA-Z]{2,3}$`).MatchString(email) {
-    return nil, errors.New("Invalid email")
-  }
-  if length := len(password); length < 2 || length > 72 {
-    return nil, errors.New("Invalid password")
   }
 
   // Check exists
   if err := c.Find(bson.M{"username": username}).One(nil); err == nil {
     return nil, errors.New("Username taken")
   }
-  if err := c.Find(bson.M{"email": email}).One(nil); err == nil {
-    return nil, errors.New("Email taken")
-  }
-
-  // Generate the new user
-  hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
-  if err != nil {
-    return nil, err
-  }
 
   u := &User{
     Id:          strings.Replace(uuid.NewUUID().String(), "-", "", -1),
     Username:    username,
     DisplayName: displayName,
-    Email:       email,
-    Password:    hash,
     GlobalRole:  2,
     Created:     time.Now().Format(time.RFC3339),
     Updated:     time.Now().Format(time.RFC3339),
@@ -116,7 +97,7 @@ func GetUser(query interface{}) (*User, error) {
   return &u, err
 }
 
-func (u *User) Save() error {
+func (u User) Save() error {
   err := DB.C("users").Update(bson.M{"id": u.Id}, u)
   if err == mgo.ErrNotFound {
     return DB.C("users").Insert(u)

@@ -3,6 +3,7 @@ package db
 import (
   "code.google.com/p/go-uuid/uuid"
   "fmt"
+  "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/structs"
   "strings"
@@ -82,7 +83,7 @@ func StructCommunityHistory(ch []CommunityHistory) []structs.HistoryItem {
 }
 
 func (ch CommunityHistory) Struct() structs.HistoryItem {
-  media, err := GetMedia(bson.M{"mediaId": ch.MediaId})
+  media, err := GetMedia(bson.M{"mid": ch.MediaId})
   if err != nil {
     fmt.Println(ch.MediaId, err.Error())
     return structs.HistoryItem{}
@@ -101,4 +102,12 @@ func (ch CommunityHistory) Struct() structs.HistoryItem {
       Save: ch.Saves,
     },
   }
+}
+
+func (ch CommunityHistory) Save() error {
+  err := DB.C("communityHistory").Update(bson.M{"id": ch.Id}, ch)
+  if err == mgo.ErrNotFound {
+    return DB.C("communityHistory").Insert(ch)
+  }
+  return err
 }

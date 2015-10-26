@@ -1,7 +1,5 @@
 package structs
 
-import ()
-
 type CommunityInfo struct {
   Id              string `json:"id"`
   Url             string `json:"url"`

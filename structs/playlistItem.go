@@ -1,7 +1,5 @@
 package structs
 
-import ()
-
 type PlaylistItem struct {
   PlaylistId string `json:"playlistId"`
   Title      string `json:"title"`

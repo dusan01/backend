@@ -1,7 +1,5 @@
 package structs
 
-import ()
-
 type UserInfo struct {
   Id          string `json:"id"`
   Username    string `json:"username"`

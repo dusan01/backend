@@ -1,7 +1,6 @@
 package socket
 
 import (
-  "bytes"
   "encoding/json"
   "github.com/gorilla/websocket"
   "hybris/pool"
@@ -44,8 +43,7 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
       Server string `json:"---conn_294857"`
     }
 
-    decoder := json.NewDecoder(bytes.NewReader(msg))
-    if err := decoder.Decode(&data); err != nil {
+    if err := json.Unmarshal(msg, &data); err != nil {
       conn.Close()
       return
     }
@@ -69,6 +67,7 @@ func Heartbeat(conn *websocket.Conn) {
     <-ticker.C
     conn.SetWriteDeadline(time.Now().Add(WriteWait))
     if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+      conn.Close()
       return
     }
   }

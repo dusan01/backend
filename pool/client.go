@@ -1,9 +1,7 @@
 package pool
 
 import (
-  "bytes"
   "encoding/json"
-  "fmt"
   "github.com/gorilla/websocket"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
@@ -22,6 +20,7 @@ type Client struct {
   sync.Mutex
   U         *db.User
   Conn      *websocket.Conn
+  ConnM     sync.Mutex
   Community string
 }
 
@@ -92,9 +91,10 @@ func (c *Client) Listen() {
 }
 
 func (c *Client) Send(data []byte) {
+  c.ConnM.Lock()
+  defer c.ConnM.Unlock()
   c.Conn.SetWriteDeadline(time.Now().Add(55 * time.Second))
   if err := c.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-    fmt.Printf("[FATAL] Failed to send websocket message [[[ %s ]]]\n", err.Error())
     c.Terminate()
   }
 }
@@ -106,8 +106,7 @@ func (c *Client) Receive(msg []byte) {
     Data   json.RawMessage `json:"d"`
   }
 
-  decoder := json.NewDecoder(bytes.NewReader(msg))
-  if err := decoder.Decode(&r); err != nil {
+  if err := json.Unmarshal(msg, &r); err != nil {
     return
   }
 
@@ -218,7 +217,59 @@ func (c *Client) Receive(msg []byte) {
      Chat
   */
   case "chat.delete":
-  // Needs to be updated
+    var data struct {
+      Id string `json:"id"`
+    }
+
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    c.Lock()
+    defer c.Unlock()
+
+    communityData, err := db.GetCommunity(bson.M{"id": c.Community})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    community := NewCommunity(communityData)
+
+    chat, err := db.GetChat(bson.M{"id": data.Id})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if chat.UserId != c.U.Id {
+      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if chat.CommunityId != c.Community || chat.Deleted {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if err := chat.Delete(); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    go community.Emit(NewEvent("chat.delete", bson.M{
+      "id":      chat.Id,
+      "deleter": c.U.Id,
+    }))
+
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   case "chat.send":
     var data struct {
       Me      bool   `json:"me"`
@@ -241,11 +292,16 @@ func (c *Client) Receive(msg []byte) {
 
     community := NewCommunity(communityData)
 
-    if len(data.Message) > 255 {
-      data.Message = data.Message[:255]
+    chat := db.NewChat(c.U.Id, communityData.Id, data.Me, data.Message)
+    if err := chat.Save(); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
     }
 
-    community.Emit(NewEvent("chat.receive", data.Message))
+    go community.Emit(NewEvent("chat.receive", chat.Struct()))
+
+    // Should this line exists?
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   /*
      Community
   */
@@ -490,7 +546,7 @@ func (c *Client) Receive(msg []byte) {
     for _, u := range population {
       users = append(users, u.Id)
     }
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, users)
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, users).Dispatch(c)
   case "community.join":
     var data struct {
       Url string `json:"url"`
@@ -504,11 +560,6 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    if community, ok := Communities[c.Community]; ok {
-      // The return of this doesn't matter. The only error this returns is when the user isn't in the community
-      _ = community.Leave(c.U)
-    }
-
     communityData, err := db.GetCommunity(bson.M{"url": data.Url})
     if err == mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
@@ -519,9 +570,13 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community := NewCommunity(communityData)
+    if user := community.GetUser(c.U.Id); user == nil {
+      if currentCommunity, ok := Communities[c.Community]; ok {
+        _ = currentCommunity.Leave(c.U)
+      }
+    }
     c.Community = communityData.Id
-    community.Join(c.U)
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{"id": community.C.Id}).Dispatch(c)
+    NewAction(r.Id, community.Join(c.U), r.Action, bson.M{"id": community.C.Id}).Dispatch(c)
   case "community.taken":
     var data struct {
       Url string `json:"url"`
@@ -647,7 +702,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if len(playlistItems) >= 200 {
+    if len(playlistItems) >= 500 {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
@@ -730,7 +785,7 @@ func (c *Client) Receive(msg []byte) {
     //  Basically, we define a few things first. The amount passed,
     //  the amount failed and a map to indicate what items have been completed.
     //
-    //  We then make sure that we only import a max of 200 items and begin.
+    //  We then make sure that we only import a max of 500 items and begin.
     //  We loop through everything, if it fails, increment the failed counter.
     //  If it succeeds then increment the passed counter and append the data to the
     //  map we created earlier.
@@ -748,10 +803,9 @@ func (c *Client) Receive(msg []byte) {
 
     total := len(data.Items)
 
-    if total > 200 {
-      failed = total - 200
-      total = 200
-      data.Items = data.Items[:200]
+    if total > 500 {
+      failed = total - 500
+      data.Items = data.Items[:500]
     }
 
     wg.Add(len(data.Items))
@@ -900,7 +954,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    community.Emit(NewEvent("chat.clear", nil))
+    go community.Emit(NewEvent("chat.clear", nil))
+
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   case "moderation.deleteChat":
     var data struct {
       Id string `json:"id"`
@@ -930,10 +986,26 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    community.Emit(NewEvent("chat.delete", bson.M{
+    chat, err := db.GetChat(bson.M{"id": data.Id})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if err := chat.Delete(); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    go community.Emit(NewEvent("chat.delete", bson.M{
       "id":      data.Id,
       "deleter": c.U.Id,
     }))
+
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   case "moderation.forceSkip":
     c.Lock()
     defer c.Unlock()
@@ -955,6 +1027,8 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community.Advance()
+
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   case "moderation.kick":
     var data struct {
       UserId string `json:"userId"`
@@ -1003,7 +1077,7 @@ func (c *Client) Receive(msg []byte) {
       UserId string `json:"userId"`
     }{data.UserId}))
 
-    NewAction(r.Id, rCode, r.Action, nil)
+    NewAction(r.Id, rCode, r.Action, nil).Dispatch(c)
   case "moderation.moveDj":
     var data struct {
       UserId   string `json:"userId"`
@@ -1664,7 +1738,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if len(playlistItems) >= 200 {
+    if len(playlistItems) >= 500 {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
