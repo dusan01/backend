@@ -5,7 +5,6 @@ import (
   "errors"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
-  "hybris/debug"
   "hybris/structs"
   "strings"
   "sync"
