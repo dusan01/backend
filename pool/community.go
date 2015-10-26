@@ -54,6 +54,12 @@ func (c *Community) Advance() {
 
   _ = c.Timer.Stop()
 
+  if c.H != nil {
+    if err := c.H.Save(); err != nil {
+      fmt.Printf("[FATAL] Failed to save community history. Detulas: [[[ %s ]]]", c.H.Id)
+    }
+  }
+
   if c.M != nil && c.C.DjRecycling {
     c.W = append(c.W, c.M.DjId)
   }
@@ -99,8 +105,9 @@ func (c *Community) Advance() {
     c.H.Title = playlistItem.Title
 
     c.M = &structs.CommunityPlayingInfo{
-      DjId:  c.W[0],
-      Media: structs.ResolvedMediaInfo{media.Struct(), playlistItem.Artist, playlistItem.Title},
+      DjId:    c.W[0],
+      Started: c.H.Created,
+      Media:   structs.ResolvedMediaInfo{media.Struct(), playlistItem.Artist, playlistItem.Title},
       Votes: structs.Votes{
         []string{},
         []string{},
@@ -129,8 +136,11 @@ func (c *Community) Join(user *db.User) int {
     }
   }
 
-  c.P = append(c.P, user)
+  // Should look into new solutions. It's likely that due to asynchronous nature, it
+  // will send the 'user.join' event to the client that has just jojned the
+  // community also
   go c.Emit(NewEvent("user.join", user.Struct()))
+  c.P = append(c.P, user)
   return enums.RESPONSE_CODES.OK
 }
 
@@ -154,7 +164,8 @@ func (c *Community) Leave(user *db.User) int {
 }
 
 func (c *Community) Emit(e Message) {
-  for _, p := range c.P {
+  population := c.P
+  for _, p := range population {
     if client, ok := Clients[p.Id]; ok {
       go e.Dispatch(client)
     }
@@ -264,8 +275,9 @@ func (c *Community) JoinWaitlist(user *db.User) int {
     go func() {
       c.Advance()
     }()
+  } else {
+    go c.Emit(NewEvent("waitlist.update", c.W))
   }
-  go c.Emit(NewEvent("waitlist.update", c.W))
   return enums.RESPONSE_CODES.OK
 }
 

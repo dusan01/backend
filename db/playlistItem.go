@@ -76,6 +76,7 @@ func (pi PlaylistItem) Struct() structs.PlaylistItem {
     return structs.PlaylistItem{}
   }
   return structs.PlaylistItem{
+    Id:         pi.Id,
     PlaylistId: pi.PlaylistId,
     Title:      pi.Title,
     Artist:     pi.Artist,
@@ -90,4 +91,8 @@ func (pi PlaylistItem) Save() error {
     return DB.C("playlistItems").Insert(pi)
   }
   return err
+}
+
+func (pi PlaylistItem) Delete() error {
+  return DB.C("playlistItems").Remove(bson.M{"id": pi.Id})
 }

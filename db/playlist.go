@@ -91,6 +91,9 @@ func (p Playlist) Save() error {
 }
 
 func (p Playlist) Delete() error {
+  if err := DB.C("playlistItems").Remove(bson.M{"playlistId": p.Id}); err != nil {
+    return err
+  }
   return DB.C("playlists").Remove(bson.M{"id": p.Id})
 }
 

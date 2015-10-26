@@ -1,7 +1,5 @@
 package structs
 
-import ()
-
 type UserPrivateInfo struct {
   Diamonds   int    `json:"diamonds"`
   Email      string `json:"email"`

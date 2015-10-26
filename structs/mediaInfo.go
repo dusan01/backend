@@ -1,7 +1,5 @@
 package structs
 
-import ()
-
 type MediaInfo struct {
   Id        string `json:"id"`
   Type      int    `json:"type"`
