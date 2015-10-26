@@ -76,6 +76,7 @@ func (pi PlaylistItem) Struct() structs.PlaylistItem {
     return structs.PlaylistItem{}
   }
   return structs.PlaylistItem{
+    Id:         pi.Id,
     PlaylistId: pi.PlaylistId,
     Title:      pi.Title,
     Artist:     pi.Artist,

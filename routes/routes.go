@@ -17,21 +17,6 @@ import (
   "net/url"
 )
 
-// Login / Signup process
-//
-// ATLAS
-// -----
-// EMAIL   /_/signup   ( username | email | password ) ( user | error )
-//  -  Will validate inputs and return a new user
-//
-// SOCIAL   /_/auth/{provider}    ( GOTH )
-// SOCIAL   /_/auth/{provider}/callback NewToken ( accessToken ) ( token )
-//  - This will generate a new token and redirect the user to /signup/social?token=TOKEN
-// SOCIAL   /_/signup/social    CreateUser ( username | token ) ( user | error ) `
-//  - This will find the token in active sessions and create a user
-//
-// IT'S THE APPICATIONS RESPONSIBILTY TO SUPPLY USER SESSIONS
-
 func init() {
   goth.UseProviders(
     twitter.New("sVHYAm8YdmTn8H5R4zbqQ15db", "T80kt2I0n7fAJyMtihdn2zh0KCCbyYoUPpbbAJGTBIGp3q2Yir", "https://rglkjbfgd.turn.fm/_/auth/twitter/callback"),
