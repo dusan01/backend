@@ -26,6 +26,7 @@ var Upgrader = websocket.Upgrader{
 func NewSocket(res http.ResponseWriter, req *http.Request) {
   conn, err := Upgrader.Upgrade(res, req, nil)
   if err != nil {
+    go debug.Log("[socket > NewSocket] Failed to upgrade socket: [%s]", err.Error())
     return
   }
 
@@ -55,9 +56,11 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
     } else if data.Server == "" && req.Header.Get("X-Forwarded-For") == "127.0.0.1" {
       // pool.NewServer()
     } else {
+      go debug.Log("[socket > NewSocket] Received bad handshake")
       conn.Close()
     }
   } else {
+    go debug.Log("[socket > NewSocket] Connection terminated unexpectedly: [%s]", err.Error())
     conn.Close()
   }
 }

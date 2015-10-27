@@ -3,6 +3,8 @@ package routes
 import (
   "encoding/json"
   "github.com/gorilla/pat"
+  "github.com/gorilla/securecookie"
+  "github.com/gorilla/sessions"
   "github.com/markbates/goth"
   "github.com/markbates/goth/gothic"
   "github.com/markbates/goth/providers/facebook"
@@ -21,9 +23,10 @@ import (
 )
 
 func init() {
+  gothic.Store = sessions.NewCookieStore(securecookie.GenerateRandomKey(64))
   goth.UseProviders(
-    twitter.New("sVHYAm8YdmTn8H5R4zbqQ15db", "T80kt2I0n7fAJyMtihdn2zh0KCCbyYoUPpbbAJGTBIGp3q2Yir", "https://rglkjbfgd.turn.fm/_/auth/twitter/callback"),
-    facebook.New("1626304387621454", "3d4bf252b325afda0ccf1c66af79ca98", "https://rglkjbfgd.turn.fm/_/auth/facebook/callback"),
+    twitter.New("sVHYAm8YdmTn8H5R4zbqQ15db", "T80kt2I0n7fAJyMtihdn2zh0KCCbyYoUPpbbAJGTBIGp3q2Yir", "http://dev.turn.fm/_/auth/twitter/callback"),
+    facebook.New("1626304387621454", "3d4bf252b325afda0ccf1c66af79ca98", "http://dev.turn.fm/_/auth/facebook/callback"),
   )
   gothic.GetState = func(req *http.Request) string {
     return req.URL.Query().Get("state")
@@ -107,9 +110,10 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
       Path:     "/",
       Domain:   ".turn.fm",
       Expires:  time.Now().Add(365 * 24 * time.Hour),
-      Secure:   true,
-      HttpOnly: true,
+      Secure:   false,
+      HttpOnly: false,
     })
+    http.Redirect(res, req, "/", 301)
     return
   }
 
@@ -159,8 +163,8 @@ func signupSocialHandler(res http.ResponseWriter, req *http.Request) {
     Path:     "/",
     Domain:   ".turn.fm",
     Expires:  time.Now().Add(365 * 24 * time.Hour),
-    Secure:   true,
-    HttpOnly: true,
+    Secure:   false,
+    HttpOnly: false,
   })
 
   WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", user.Struct()})
@@ -237,8 +241,8 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
     Path:     "/",
     Domain:   ".turn.fm",
     Expires:  time.Now().Add(365 * 24 * time.Hour),
-    Secure:   true,
-    HttpOnly: true,
+    Secure:   false,
+    HttpOnly: false,
   })
 
   WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", user.Struct()})
@@ -288,8 +292,8 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
     Path:     "/",
     Domain:   ".turn.fm",
     Expires:  time.Now().Add(365 * 24 * time.Hour),
-    Secure:   true,
-    HttpOnly: true,
+    Secure:   false,
+    HttpOnly: false,
   })
 
   WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", user.Struct()})

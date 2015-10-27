@@ -74,13 +74,13 @@ func NewUser(username string) (*User, error) {
   // Validate info
   if length := len(username); length < 2 || length > 20 || !regexp.MustCompile(`^[a-zA-Z0-9_\-\.]+$`).MatchString(username) {
     go debug.Log("[db > NewUser] Invalid username: %s", username)
-    return nil, errors.New("invalid username")
+    return nil, errors.New("Invalid username.")
   }
 
   // Check exists
   if err := c.Find(bson.M{"username": username}).One(nil); err == nil {
     go debug.Log("[db > NewUser] Username taken: %s", username)
-    return nil, errors.New("username taken")
+    return nil, errors.New("Username taken.")
   }
 
   u := &User{
