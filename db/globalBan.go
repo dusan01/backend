@@ -57,10 +57,20 @@ func NewGlobalBan(bannee, banner, reason string, duration int) GlobalBan {
   }
 }
 
+func GetGlobalBan(query interface{}) (*GlobalBan, error) {
+  var gb GlobalBan
+  err := DB.C("globalBans").Find(query).One(&gb)
+  return &gb, err
+}
+
 func (gb GlobalBan) Save() error {
   err := DB.C("globalBans").Update(bson.M{"id": gb.Id}, gb)
   if err == mgo.ErrNotFound {
     return DB.C("globalBans").Insert(gb)
   }
   return err
+}
+
+func (gb GlobalBan) Delete() error {
+  return DB.C("globalBans").Remove(bson.M{"id": gb.Id})
 }

@@ -35,21 +35,40 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
 
   cookie, err := req.Cookie("auth")
   if err != nil {
-    go debug.Log("Failed to retrieve auth cookie")
+    go debug.Log("[pool > NewClient] Failed to retrieve auth cookie")
     conn.Close()
     return
   }
 
   session, err := db.GetSession(bson.M{"cookie": cookie.Value})
   if err != nil {
-    go debug.Log("Failed to retieve user session with cookie value: [%s]", cookie.Value)
+    go debug.Log("[pool > NewClient] Failed to retieve user session with cookie value: [%s]", cookie.Value)
     conn.Close()
     return
   }
 
   user, err := db.GetUser(bson.M{"id": session.UserId})
   if err != nil {
-    go debug.Log("Failed to find user with session id: [%s]", session.UserId)
+    go debug.Log("[pool > NewClient] Failed to find user with session id: [%s]", session.UserId)
+    conn.Close()
+    return
+  }
+
+  if globalBan, err := db.GetGlobalBan(bson.M{"banneeId": user.Id}); err == nil {
+    if globalBan.Until == nil {
+      conn.Close()
+      return
+    }
+
+    if globalBan.Until.Before(time.Now()) {
+      if err := globalBan.Delete(); err != nil {
+        go debug.Log("[pool > NewClient] Failed to delete global ban: [%s]", globalBan.Id)
+        conn.Close()
+        return
+      }
+    }
+  } else if err != mgo.ErrNotFound && err != nil {
+    go debug.Log("[pool > NewClient] Failed to retrieve Global Ban: [%s]", err.Error())
     conn.Close()
     return
   }
@@ -575,6 +594,21 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
+    if ban, err := db.GetBan(bson.M{"banneeId": c.U.Id, "communityId": communityData.Id}); err == nil {
+      if ban.Until.Before(time.Now()) {
+        if err := ban.Delete(); err != nil {
+          NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+          return
+        }
+      } else {
+        NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
+        return
+      }
+    } else if err != mgo.ErrNotFound && err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
     community := NewCommunity(communityData)
     if user := community.GetUser(c.U.Id); user == nil {
       if currentCommunity, ok := Communities[c.Community]; ok {
@@ -940,6 +974,103 @@ func (c *Client) Receive(msg []byte) {
 
     action.Dispatch(c)
   case "moderation.ban":
+    var data struct {
+      UserId string        `json:"userId"`
+      Reason string        `json:"reason"`
+      Length time.Duration `json:"length"`
+    }
+
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    c.Lock()
+    defer c.Unlock()
+
+    if data.Length <= 0 || data.Length > 31536000 || len(data.Reason) > 255 {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    communityData, err := db.GetCommunity(bson.M{"id": c.Community})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    community := NewCommunity(communityData)
+
+    role := enums.MODERATION_ROLES.BOUNCER
+    if data.Length > 86400 {
+      role = enums.MODERATION_ROLES.MANAGER
+    }
+
+    if !community.HasPermission(c.U, role) {
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    client, ok := Clients[data.UserId]
+    if !ok {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if ban, err := db.GetBan(bson.M{"banneeId": client.U.Id, "communityId": communityData.Id}); err == nil {
+      if err := ban.Delete(); err != nil {
+        NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+        return
+      }
+    } else if err != mgo.ErrNotFound && err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    client.Lock()
+    if client.Community != c.Community {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    cs, err := db.GetCommunityStaff(bson.M{"communityId": communityData.Id, "userId": client.U.Id})
+    if err == mgo.ErrNotFound {
+      cs = db.NewCommunityStaff(communityData.Id, client.U.Id, 0)
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if !community.HasPermission(c.U, cs.Role+1) {
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    until := time.Now().Add(data.Length * time.Second)
+    ban := db.NewBan(client.U.Id, c.U.Id, communityData.Id, data.Reason, &until)
+
+    if err := ban.Save(); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    rCode := community.Leave(client.U)
+
+    event := NewEvent("moderation.ban", struct {
+      UserId string `json:"userId"`
+      Reason string `json:"reason"`
+    }{data.UserId, data.Reason})
+
+    go event.Dispatch(client)
+    client.Unlock()
+
+    go community.Emit(event)
+
+    NewAction(r.Id, rCode, r.Action, nil).Dispatch(c)
+
   case "moderation.clearChat":
     c.Lock()
     defer c.Unlock()
@@ -1077,11 +1208,14 @@ func (c *Client) Receive(msg []byte) {
     }
 
     rCode := community.Leave(client.U)
+
+    event := NewEvent("moderation.kick", struct {
+      UserId string `json:"userId"`
+    }{data.UserId})
+    go event.Dispatch(client)
     client.Unlock()
 
-    go community.Emit(NewEvent("moderation.kick", struct {
-      UserId string `json:"userId"`
-    }{data.UserId}))
+    go community.Emit(event)
 
     NewAction(r.Id, rCode, r.Action, nil).Dispatch(c)
   case "moderation.moveDj":
