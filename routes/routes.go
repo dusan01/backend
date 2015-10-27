@@ -29,12 +29,12 @@ func init() {
 }
 
 func Attach(router *pat.Router) {
-  router.Get("/_/auth/{provider}/callback", authHandler)
-  router.Get("/_/auth/{provider}", gothic.BeginAuthHandler)
-  router.Post("/_/signup/social", signupSocialHandler)
-  router.Post("/_/signup", signupHanlder)
-  router.Post("/_/login", loginHanlder)
-  router.Get("/_/socket", socketHandler)
+  router.Get("/auth/{provider}/callback", authHandler)
+  router.Get("/auth/{provider}", gothic.BeginAuthHandler)
+  router.Post("/signup/social", signupSocialHandler)
+  router.Post("/signup", signupHanlder)
+  router.Post("/login", loginHanlder)
+  router.Get("/socket", socketHandler)
   router.Get("/", indexHandler)
 }
 
