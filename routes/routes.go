@@ -36,6 +36,7 @@ func Attach(router *pat.Router) {
   router.Post("/signup/social", signupSocialHandler)
   router.Post("/signup", signupHanlder)
   router.Post("/login", loginHanlder)
+  router.Get("/taken/username/{username}", takenUsernameHandler)
   router.Get("/taken/email/{email}", takenEmailHandler)
   router.Get("/socket", socketHandler)
   router.Get("/", indexHandler)
@@ -77,7 +78,7 @@ func indexHandler(res http.ResponseWriter, req *http.Request) {
 func authHandler(res http.ResponseWriter, req *http.Request) {
   info, err := gothic.CompleteUserAuth(res, req)
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "server error"})
     return
   }
   // Find the user and log them in if they exist
@@ -90,12 +91,12 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
   if err == nil {
     session, err := db.NewSession(user.Id)
     if err != nil {
-      WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+      WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
       return
     }
 
     if err := session.Save(); err != nil {
-      WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+      WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
       return
     }
 
@@ -122,32 +123,32 @@ func signupSocialHandler(res http.ResponseWriter, req *http.Request) {
   }
 
   if err := json.NewDecoder(req.Body).Decode(&data); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "server error"})
     return
   }
 
   user, err := atlas.NewSocialUser(data.Username, data.Token)
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, err.Error()})
     return
   }
 
   // Create session
   session, err := db.NewSession(user.Id)
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
   // Save user
   if err := user.Save(); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
   // Save session
   if err := session.Save(); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
@@ -182,9 +183,10 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   captchaRes, err := captchaClient.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
     "secret":   {"6LdzaA8TAAAAAE7puUC6qhn2b2in89iiPL9s8_Nv"},
     "response": {data.Recaptcha},
+    "remoteip": {strings.Split(r.RemoteAddr, ":")[0]},
   })
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
@@ -193,38 +195,38 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   }
 
   if err := json.NewDecoder(captchaRes.Body).Decode(&recaptchaData); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
   if !recaptchaData.Success {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "recaptcha not valid"})
     return
   }
 
   // Create User
   user, err := atlas.NewEmailUser(data.Username, data.Email, data.Password)
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, err.Error()})
     return
   }
 
   // Create session
   session, err := db.NewSession(user.Id)
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
   // Save user
   if err := user.Save(); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
   // Save session
   if err := session.Save(); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "server error"})
     return
   }
 
@@ -254,25 +256,28 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
 
   // Get and authenticate user
   user, err := db.GetUser(bson.M{"email": data.Email})
-  if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.UNAUTHORIZED, nil})
+  if err == mgo.ErrNotFound {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.UNAUTHORIZED, "invalid email and password combination"})
+    return
+  } else if err != nil {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "db query error"})
     return
   }
 
   if err := bcrypt.CompareHashAndPassword(user.Password, []byte(data.Password)); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.UNAUTHORIZED, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.UNAUTHORIZED, "invalid email and password combination"})
     return
   }
 
   // Get session
   session, err := db.NewSession(user.Id)
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "failed to create new session"})
     return
   }
 
   if err := session.Save(); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "failed to save session"})
     return
   }
 
@@ -289,6 +294,20 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   WriteResponse(res, Response{enums.RESPONSE_CODES.OK, user.Struct()})
 }
 
+func takenUsernameHandler(res http.ResponseWriter, req *http.Request) {
+  username := strings.TrimSpace(req.URL.Query().Get(":username"))
+
+  if _, err := db.GetUser(bson.M{"username": username}); err == mgo.ErrNotFound {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.OK, false})
+    return
+  } else if err != nil {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "db query error"})
+    return
+  }
+
+  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, true})
+}
+
 func takenEmailHandler(res http.ResponseWriter, req *http.Request) {
   email := strings.TrimSpace(req.URL.Query().Get(":email"))
 
@@ -296,7 +315,7 @@ func takenEmailHandler(res http.ResponseWriter, req *http.Request) {
     WriteResponse(res, Response{enums.RESPONSE_CODES.OK, false})
     return
   } else if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, false})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, "db query error"})
     return
   }
 

@@ -6,6 +6,7 @@ import (
   "golang.org/x/crypto/bcrypt"
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
+  "hybris/debug"
   "regexp"
   "strings"
 )
@@ -35,11 +36,13 @@ func NewToken(provider, accessToken string) (token string) {
 func NewSocialUser(username, token string) (*db.User, error) {
   session, ok := sessions[token]
   if !ok {
-    return nil, errors.New("Invalid token")
+    go debug.Log("[atlas > NewEmailUser] Invalid token: [%s]", token)
+    return nil, errors.New("invalid token")
   }
 
   user, err := db.NewUser(username)
   if err != nil {
+    go debug.Log("[atlas > NewEmailUser] Failed to create user: [%s]", err.Error())
     return nil, err
   }
   switch session.Provider {
@@ -60,30 +63,25 @@ func NewEmailUser(username, email, password string) (*db.User, error) {
 
   email = strings.ToLower(email)
   if length := len(email); length > 100 || !regexp.MustCompile(`@`).MatchString(email) {
-    return nil, errors.New("Invalid email")
+    go debug.Log("[atlas > NewEmailUser] Email is invalid: [%s]", email)
+    return nil, errors.New("invalid email")
   }
   if length := len(password); length < 2 || length > 72 {
-    return nil, errors.New("Invalid password")
+    go debug.Log("[atlas > NewEmailUser] Password is invalid")
+    return nil, errors.New("invalid password")
   }
   if err := db.DB.C("users").Find(bson.M{"email": email}).One(nil); err == nil {
-    return nil, errors.New("Email taken")
+    go debug.Log("[atlas > NewEmailUser] Email already in use: [%s]", email)
+    return nil, errors.New("email taken")
   }
 
   hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
   if err != nil {
-    return nil, err
+    go debug.Log("[atlas > NewEmailUser] Failed to generate password hash")
+    return nil, "server error"
   }
 
   user.Email = email
   user.Password = hash
   return user, nil
 }
-
-// ATLAS
-// -----
-//
-// NewToken
-//  Returns a token to be sent to the client
-//
-// ValidateToken
-//  Validates the given token and returns required user info
