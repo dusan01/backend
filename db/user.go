@@ -5,6 +5,7 @@ import (
   "errors"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
+  "hybris/debug"
   "hybris/structs"
   "regexp"
   "strings"
@@ -72,12 +73,14 @@ func NewUser(username string) (*User, error) {
 
   // Validate info
   if length := len(username); length < 2 || length > 20 || !regexp.MustCompile(`^[a-zA-Z0-9_\-\.]+$`).MatchString(username) {
-    return nil, errors.New("Invalid username")
+    go debug.Log("[db > NewUser] Invalid username: %s", username)
+    return nil, errors.New("invalid username")
   }
 
   // Check exists
   if err := c.Find(bson.M{"username": username}).One(nil); err == nil {
-    return nil, errors.New("Username taken")
+    go debug.Log("[db > NewUser] Username taken: %s", username)
+    return nil, errors.New("username taken")
   }
 
   u := &User{

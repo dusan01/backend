@@ -45,7 +45,7 @@ func NewSession(id string) (*Session, error) {
     return session, nil
   }
 
-  debug.Log("Creating sessions for user: [%s]", id)
+  go debug.Log("Creating session for user: [%s]", id)
 
   return &Session{
     Id:      strings.Replace(uuid.NewUUID().String(), "-", "", -1),
@@ -64,7 +64,7 @@ func GetSession(query interface{}) (*Session, error) {
 }
 
 func (s Session) Save() error {
-  debug.Log("Saving session: [{\n\t'cookie': %s,\n\t'user': %s\n}]", s.Cookie, s.UserId)
+  go debug.Log("Saving session: [{\n\t'cookie': %s,\n\t'user': %s\n}]", s.Cookie, s.UserId)
   err := DB.C("sessions").Update(bson.M{"id": s.Id}, s)
   if err == mgo.ErrNotFound {
     return DB.C("sessions").Insert(s)

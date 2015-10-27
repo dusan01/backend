@@ -1,9 +1,9 @@
 package pool
 
 import (
-  "fmt"
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
+  "hybris/debug"
   "hybris/enums"
   "hybris/structs"
   "sync"
@@ -56,7 +56,7 @@ func (c *Community) Advance() {
 
   if c.H != nil {
     if err := c.H.Save(); err != nil {
-      fmt.Printf("[FATAL] Failed to save community history. Detulas: [[[ %s ]]]", c.H.Id)
+      go debug.Log("[pool > Community.Advance] Failed to save community history. Details: [[[ %s ]]]", c.H.Id)
     }
   }
 
@@ -70,18 +70,18 @@ func (c *Community) Advance() {
 
     playlist, err := Clients[c.W[0]].U.GetActivePlaylist()
     if err != nil {
-      fmt.Printf("[FATAL] Failed to retrieve playlist. Details: [[[ %s ||| %s ]]]\n", c.W[0], err.Error())
+      go debug.Log("[pool > Community.Advance] Failed to retrieve playlist. Details: [[[ %s ||| %s ]]]", c.W[0], err.Error())
       return
     }
 
     if playlist == nil {
-      fmt.Printf("[FATAL] Active playlist is nil for user %s\n", c.W[0])
+      go debug.Log("[pool > Community.Advance] Active playlist is nil for user %s", c.W[0])
       return
     }
 
     items, err := playlist.GetItems()
     if err != nil {
-      fmt.Printf("[FATAL] Failed to get playlist items. Details: [[[ %s ||| %s ]]]\n", playlist.Id, err.Error())
+      go debug.Log("[pool > Community.Advance] Failed to get playlist items. Details: [[[ %s ||| %s ]]]", playlist.Id, err.Error())
       return
     }
 
@@ -90,13 +90,13 @@ func (c *Community) Advance() {
     items = append(items[1:], playlistItem)
 
     if err := playlist.SaveItems(items); err != nil {
-      fmt.Printf("[FATAL] Failed to save playlist items. Details: [[[ %s ||| %s ]]]\n", playlist.Id, err.Error())
+      go debug.Log("[pool > Community.Advance] Failed to save playlist items. Details: [[[ %s ||| %s ]]]", playlist.Id, err.Error())
       return
     }
 
     media, err := db.GetMedia(bson.M{"mid": playlistItem.MediaId})
     if err != nil {
-      fmt.Printf("[FATAL] Failed to retrieve media. Details: [[[ %s ||| %s ]]]\n", playlistItem.MediaId, err.Error())
+      go debug.Log("[pool > Community.Advance] Failed to retrieve media. Details: [[[ %s ||| %s ]]]", playlistItem.MediaId, err.Error())
       return
     }
 

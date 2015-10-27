@@ -35,21 +35,21 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
 
   cookie, err := req.Cookie("auth")
   if err != nil {
-    debug.Log("Failed to retrieve auth cookie")
+    go debug.Log("Failed to retrieve auth cookie")
     conn.Close()
     return
   }
 
   session, err := db.GetSession(bson.M{"cookie": cookie.Value})
   if err != nil {
-    debug.Log("Failed to retieve user session with cookie value: [%s]", cookie.Value)
+    go debug.Log("Failed to retieve user session with cookie value: [%s]", cookie.Value)
     conn.Close()
     return
   }
 
   user, err := db.GetUser(bson.M{"id": session.UserId})
   if err != nil {
-    debug.Log("Failed to find user with session id: [%s]", session.UserId)
+    go debug.Log("Failed to find user with session id: [%s]", session.UserId)
     conn.Close()
     return
   }
@@ -61,7 +61,7 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
   }
 
   if v, ok := Clients[user.Id]; ok {
-    debug.Log("Client already exists. Terminating old client")
+    go debug.Log("Client already exists. Terminating old client")
     v.Terminate()
   }
 
@@ -69,7 +69,7 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
 
   client.Send([]byte(`{"hello":true}`))
   go client.Listen()
-  debug.Log("Successfully connected client")
+  go debug.Log("Successfully connected client")
 }
 
 func (c *Client) Terminate() {
