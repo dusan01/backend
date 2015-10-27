@@ -1,5 +1,9 @@
 package enums
 
+const (
+  VERSION = "0.1.0"
+)
+
 var RESPONSE_CODES = struct {
   OK,
   BAD_REQUEST,

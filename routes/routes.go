@@ -8,6 +8,7 @@ import (
   "github.com/markbates/goth/providers/facebook"
   "github.com/markbates/goth/providers/twitter"
   "golang.org/x/crypto/bcrypt"
+  "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/atlas"
   "hybris/db"
@@ -15,6 +16,7 @@ import (
   "hybris/socket"
   "net/http"
   "net/url"
+  "strings"
   "time"
 )
 
@@ -34,6 +36,7 @@ func Attach(router *pat.Router) {
   router.Post("/signup/social", signupSocialHandler)
   router.Post("/signup", signupHanlder)
   router.Post("/login", loginHanlder)
+  router.Get("/taken/email/{email}", takenEmailHandler)
   router.Get("/socket", socketHandler)
   router.Get("/", indexHandler)
 }
@@ -68,7 +71,7 @@ func WriteResponse(res http.ResponseWriter, response Response) {
 // Route handlers
 
 func indexHandler(res http.ResponseWriter, req *http.Request) {
-  res.Write([]byte("turn.fm backend"))
+  res.Write([]byte(`turnf.fm backend, version ` + enums.VERSION))
 }
 
 func authHandler(res http.ResponseWriter, req *http.Request) {
@@ -85,13 +88,15 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
 
   user, err := db.GetUser(query)
   if err == nil {
-    session, err := db.GetSession(bson.M{"userId": user.Id})
+    session, err := db.NewSession(user.Id)
     if err != nil {
-      session, err = db.NewSession(user.Id)
-      if err != nil {
-        WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
-        return
-      }
+      WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+      return
+    }
+
+    if err := session.Save(); err != nil {
+      WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+      return
     }
 
     http.SetCookie(res, &http.Cookie{
@@ -250,7 +255,7 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   // Get and authenticate user
   user, err := db.GetUser(bson.M{"email": data.Email})
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.UNAUTHORIZED, nil})
     return
   }
 
@@ -260,13 +265,15 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   }
 
   // Get session
-  session, err := db.GetSession(bson.M{"userId": user.Id})
+  session, err := db.NewSession(user.Id)
   if err != nil {
-    session, err = db.NewSession(user.Id)
-    if err != nil {
-      WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
-      return
-    }
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    return
+  }
+
+  if err := session.Save(); err != nil {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, nil})
+    return
   }
 
   http.SetCookie(res, &http.Cookie{
@@ -280,6 +287,20 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   })
 
   WriteResponse(res, Response{enums.RESPONSE_CODES.OK, user.Struct()})
+}
+
+func takenEmailHandler(res http.ResponseWriter, req *http.Request) {
+  email := strings.TrimSpace(req.URL.Query().Get(":email"))
+
+  if _, err := db.GetUser(bson.M{"email": email}); err == mgo.ErrNotFound {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.OK, false})
+    return
+  } else if err != nil {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.ERROR, false})
+    return
+  }
+
+  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, true})
 }
 
 func socketHandler(res http.ResponseWriter, req *http.Request) {

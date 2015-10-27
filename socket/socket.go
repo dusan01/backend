@@ -3,6 +3,7 @@ package socket
 import (
   "encoding/json"
   "github.com/gorilla/websocket"
+  "hybris/debug"
   "hybris/pool"
   "net/http"
   "time"
@@ -49,6 +50,7 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
     }
 
     if data.Hello {
+      debug.Log("Client handshake successful")
       pool.NewClient(req, conn)
     } else if data.Server == "" && req.Header.Get("X-Forwarded-For") == "127.0.0.1" {
       // pool.NewServer()
