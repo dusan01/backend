@@ -7,13 +7,19 @@ const (
 var RESPONSE_CODES = struct {
   OK,
   BAD_REQUEST,
-  UNAUTHORIZED,
-  ERROR int
+  NOT_FOUND,
+  FORBIDDEN,
+  ALREADY_LOGGED_IN,
+  UNIMPLEMENTED,
+  SERVER_ERROR int
 }{
-  OK:           0,
-  BAD_REQUEST:  1,
-  UNAUTHORIZED: 2,
-  ERROR:        3,
+  OK:                0,
+  BAD_REQUEST:       1,
+  NOT_FOUND:         2,
+  FORBIDDEN:         3,
+  ALREADY_LOGGED_IN: 100,
+  UNIMPLEMENTED:     9998,
+  SERVER_ERROR:      9999,
 }
 
 var BROADCAST_TYPES = struct {

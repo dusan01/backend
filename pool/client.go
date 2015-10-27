@@ -135,7 +135,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
-      go NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -163,7 +163,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
-      go NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -175,7 +175,7 @@ func (c *Client) Receive(msg []byte) {
 
     globalBan := db.NewGlobalBan(user.Id, c.U.Id, data.Reason, data.Duration)
     if err := globalBan.Save(); err != nil {
-      go NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      go NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -204,7 +204,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
-      go NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -240,7 +240,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -251,12 +251,12 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if chat.UserId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -266,7 +266,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := chat.Delete(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -292,7 +292,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -300,7 +300,7 @@ func (c *Client) Receive(msg []byte) {
 
     chat := db.NewChat(c.U.Id, communityData.Id, data.Me, data.Message)
     if err := chat.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -328,7 +328,7 @@ func (c *Client) Receive(msg []byte) {
 
     communities, err := c.U.GetCommunities()
     if err != nil || len(communities) >= 3 {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -339,13 +339,13 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := community.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     staff := db.NewCommunityStaff(community.Id, c.U.Id, enums.MODERATION_ROLES.HOST)
     if err := staff.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -374,7 +374,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -382,7 +382,7 @@ func (c *Client) Receive(msg []byte) {
 
     // Check the user owns this community
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.HOST) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -427,7 +427,7 @@ func (c *Client) Receive(msg []byte) {
 
     // Save community
     if err := communityData.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -447,13 +447,13 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     history, err := communityData.GetHistory(50)
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -473,7 +473,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -493,13 +493,13 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     staff, err := communityData.GetStaff()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -519,7 +519,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -542,7 +542,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -571,7 +571,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -613,7 +613,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -627,7 +627,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -643,7 +643,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -658,7 +658,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -693,18 +693,18 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     playlistItems, err := playlist.GetItems()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -723,12 +723,12 @@ func (c *Client) Receive(msg []byte) {
     // Add other error reporting
     media, err := db.NewMedia(data.MediaId, data.Type)
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if err := media.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -736,7 +736,7 @@ func (c *Client) Receive(msg []byte) {
 
     playlistItems = append([]db.PlaylistItem{playlistItem}, playlistItems...)
     if err := playlist.SaveItems(playlistItems); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -760,7 +760,7 @@ func (c *Client) Receive(msg []byte) {
 
     playlists, err := c.U.GetPlaylists()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -771,17 +771,17 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if len(playlists) >= 25 {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     if err := playlist.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if err := playlist.Select(c.U); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -850,7 +850,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := playlist.SaveItems(playlistItems); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -886,7 +886,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -912,14 +912,14 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     community := NewCommunity(communityData)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -949,14 +949,14 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     community := NewCommunity(communityData)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.MANAGER) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -981,14 +981,14 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     community := NewCommunity(communityData)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -997,12 +997,12 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if err := chat.Delete(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1021,14 +1021,14 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     community := NewCommunity(communityData)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1053,14 +1053,14 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     community := NewCommunity(communityData)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1103,14 +1103,14 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     community := NewCommunity(communityData)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.MANAGER) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1141,14 +1141,14 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     community := NewCommunity(communityData)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1187,7 +1187,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1203,7 +1203,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if !community.HasPermission(c.U, data.Role+1) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1217,12 +1217,12 @@ func (c *Client) Receive(msg []byte) {
     if err == mgo.ErrNotFound {
       cs = db.NewCommunityStaff(communityData.Id, user.Id, data.Role)
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if !community.HasPermission(c.U, cs.Role+1) {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1235,7 +1235,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1261,18 +1261,18 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     items, err := playlist.GetItems()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1282,7 +1282,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := playlist.Select(c.U); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1302,7 +1302,7 @@ func (c *Client) Receive(msg []byte) {
 
     playlists, err := c.U.GetPlaylists()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1313,12 +1313,12 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if len(playlists) >= 25 {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     if err := playlist.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1341,12 +1341,12 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1356,7 +1356,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := playlist.Delete(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1380,12 +1380,12 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1399,7 +1399,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := playlist.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1422,18 +1422,18 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     playlistItems, err := playlist.GetItems()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1444,7 +1444,7 @@ func (c *Client) Receive(msg []byte) {
 
     playlists, err := c.U.GetPlaylists()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1471,18 +1471,18 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     playlistItems, err := playlist.GetItems()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1491,7 +1491,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1504,7 +1504,7 @@ func (c *Client) Receive(msg []byte) {
     for i, pi := range playlistItems {
       if pi.Id == data.PlaylistItemId {
         if err := pi.Delete(); err != nil {
-          NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+          NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
           return
         }
         playlistItems = append(playlistItems[:i], playlistItems[:i+1]...)
@@ -1513,7 +1513,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := playlist.SaveItems(playlistItems); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1539,12 +1539,12 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1553,7 +1553,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1562,7 +1562,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1591,7 +1591,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := playlistItem.Save(); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
@@ -1615,18 +1615,18 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     playlistItems, err := playlist.GetItems()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1653,7 +1653,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := playlist.SaveItems(playlistItems); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
@@ -1671,7 +1671,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1691,7 +1691,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1720,7 +1720,7 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1737,18 +1737,18 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if playlist.OwnerId != c.U.Id {
-      NewAction(r.Id, enums.RESPONSE_CODES.UNAUTHORIZED, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     playlistItems, err := playlist.GetItems()
     if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
@@ -1770,7 +1770,7 @@ func (c *Client) Receive(msg []byte) {
 
     playlistItems = append([]db.PlaylistItem{playlistItem}, playlistItems...)
     if err := playlist.SaveItems(playlistItems); err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.ERROR, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
