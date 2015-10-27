@@ -1486,6 +1486,11 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
+    if len(playlistItems) <= 1 {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
     communityData, err := db.GetCommunity(bson.M{"id": c.Community})
     if err == mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
