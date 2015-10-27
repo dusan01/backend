@@ -258,7 +258,7 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   // Get and authenticate user
   user, err := db.GetUser(bson.M{"email": data.Email})
   if err == mgo.ErrNotFound {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.FORBIDDEN, "Wrrong email or password.", nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.FORBIDDEN, "Wrong email or password.", nil})
     return
   } else if err != nil {
     WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
