@@ -78,7 +78,7 @@ func NewEmailUser(username, email, password string) (*db.User, error) {
   hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
   if err != nil {
     go debug.Log("[atlas > NewEmailUser] Failed to generate password hash")
-    return nil, "server error"
+    return nil, errors.New("server error")
   }
 
   user.Email = email
