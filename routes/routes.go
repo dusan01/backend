@@ -187,7 +187,7 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   // ReCaptcha
   captchaClient := &http.Client{}
   captchaRes, err := captchaClient.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
-    "secret":   {"6LdzaA8TAAAAAE7puUC6qhn2b2in89iiPL9s8_Nv"},
+    "secret":   {"6LfDhg4TAAAAALGzHUmWr-zcuNVgE5oU2PYjVj4I"},
     "response": {data.Recaptcha},
     "remoteip": {strings.Split(req.RemoteAddr, ":")[0]},
   })
