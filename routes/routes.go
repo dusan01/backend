@@ -205,7 +205,7 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   }
 
   if !recaptchaData.Success {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Recaptcha invalid.", nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Invalid recaptcha.", nil})
     return
   }
 
