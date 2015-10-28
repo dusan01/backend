@@ -140,9 +140,6 @@ func (c *Client) Receive(msg []byte) {
      Admin
   */
   case "adm.broadcast":
-    c.Lock()
-    defer c.Unlock()
-
     var data struct {
       Type    int    `json:"type"`
       Message string `json:"message"`
@@ -152,6 +149,9 @@ func (c *Client) Receive(msg []byte) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
+
+    c.Lock()
+    defer c.Unlock()
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
       go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -167,14 +167,14 @@ func (c *Client) Receive(msg []byte) {
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   case "adm.globalBan":
-    c.Lock()
-    defer c.Unlock()
-
     var data struct {
       Id       string `json:"id"`
       Duration int    `json:"duration"`
       Reason   string `json:"reason"`
     }
+
+    c.Lock()
+    defer c.Unlock()
 
     if err := json.Unmarshal(r.Data, &data); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
@@ -210,8 +210,6 @@ func (c *Client) Receive(msg []byte) {
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   case "adm.maintenance":
-    c.Lock()
-    defer c.Unlock()
 
     var data struct {
       Start bool `json:"start"`
@@ -226,6 +224,9 @@ func (c *Client) Receive(msg []byte) {
       go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
+
+    c.Lock()
+    defer c.Unlock()
 
     Maintenance = data.Start
 

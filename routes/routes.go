@@ -318,7 +318,7 @@ func takenUsernameHandler(res http.ResponseWriter, req *http.Request) {
     return
   }
 
-  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "", map[string]interface{}{
+  WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", map[string]interface{}{
     "taken": true,
   }})
 }
@@ -341,7 +341,7 @@ func takenEmailHandler(res http.ResponseWriter, req *http.Request) {
     return
   }
 
-  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "", map[string]interface{}{
+  WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", map[string]interface{}{
     "taken": true,
   }})
 }

@@ -5,7 +5,11 @@ import (
 )
 
 type Message interface {
-  Dispatch(*Client)
+  Dispatch(Sender)
+}
+
+type Sender interface {
+  Send([]byte)
 }
 
 type Action struct {
@@ -19,13 +23,13 @@ func NewAction(id, status int, action string, data interface{}) Action {
   return Action{id, status, action, data}
 }
 
-func (a Action) Dispatch(c *Client) {
+func (a Action) Dispatch(s Sender) {
   payload, err := json.Marshal(a)
   if err != nil {
     return
   }
 
-  c.Send(payload)
+  s.Send(payload)
 }
 
 type Event struct {
@@ -37,11 +41,11 @@ func NewEvent(event string, data interface{}) Event {
   return Event{event, data}
 }
 
-func (e Event) Dispatch(c *Client) {
+func (e Event) Dispatch(s Sender) {
   payload, err := json.Marshal(e)
   if err != nil {
     return
   }
 
-  c.Send(payload)
+  s.Send(payload)
 }
