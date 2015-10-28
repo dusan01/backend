@@ -5,6 +5,7 @@ type PlaylistInfo struct {
   Id       string `json:"id"`
   OwnerId  string `json:"ownerId"`
   Selected bool   `json:"selected"`
+  Order    int    `json:"order"`
 
   Length int `json:"length"`
 }

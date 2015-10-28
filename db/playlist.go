@@ -31,6 +31,9 @@ type Playlist struct {
   //  Only one playlist can be selected at a time
   Selected bool `json:"selected" bson:"selected"`
 
+  // The order that playlists are displayed in the UI
+  Order int `json:"order" bson:"order"`
+
   // The date this objects was created in RFC 3339
   Created string `json:"created" bson:"created"`
 
@@ -78,6 +81,7 @@ func (p Playlist) Struct() structs.PlaylistInfo {
     Id:       p.Id,
     OwnerId:  p.OwnerId,
     Selected: p.Selected,
+    Order:    p.Order,
     Length:   len(items),
   }
 }

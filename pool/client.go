@@ -1452,7 +1452,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if err := playlist.Save(); err != nil {
+    playlists = append(playlists, *playlist)
+
+    if err := c.U.SavePlaylists(playlists); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
@@ -1584,6 +1586,64 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, db.StructPlaylists(playlists)).Dispatch(c)
+  case "playlist.move":
+    var data struct {
+      PlaylistId string `json:"playlistId"`
+      Position   int    `json:"position"`
+    }
+
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    c.Lock()
+    defer c.Unlock()
+
+    playlist, err := db.GetPlaylist(bson.M{"id": data.PlaylistId})
+    if err == mgo.ErrNotFound {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    playlists, err := c.U.GetPlaylists()
+    if err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if playlist.OwnerId != c.U.Id {
+      NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if data.Position < 0 || data.Position > (len(playlists)-1) {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    found := false
+    for i, p := range playlists {
+      if p.Id == playlist.Id {
+        found = true
+        playlists = append(playlists[:i], playlists[i+1:]...)
+        playlists = append(playlists[:data.Position], append([]db.Playlist{p}, playlists[data.Position:]...)...)
+      }
+    }
+
+    if !found {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    if err := c.U.SavePlaylists(playlists); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
+      return
+    }
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
   /*
      PlaylistItem
   */
@@ -1770,19 +1830,17 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if data.Position <= 0 || data.Position > (len(playlistItems)-1) {
+    if data.Position < 0 || data.Position > (len(playlistItems)-1) {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
 
-    var item db.PlaylistItem
     found := false
     for i, pi := range playlistItems {
       if pi.Id == data.PlaylistItemId {
         found = true
-        item = pi
         playlistItems = append(playlistItems[:i], playlistItems[i+1:]...)
-        playlistItems = append(playlistItems[:data.Position], append([]db.PlaylistItem{item}, playlistItems[data.Position:]...)...)
+        playlistItems = append(playlistItems[:data.Position], append([]db.PlaylistItem{pi}, playlistItems[data.Position:]...)...)
         break
       }
     }
@@ -1797,7 +1855,6 @@ func (c *Client) Receive(msg []byte) {
       return
     }
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
-    return
 
   /*
      Vote

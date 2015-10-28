@@ -121,7 +121,34 @@ func (u User) GetActivePlaylist() (*Playlist, error) {
 func (u User) GetPlaylists() ([]Playlist, error) {
   var playlists []Playlist
   err := DB.C("playlists").Find(bson.M{"ownerId": u.Id}).Iter().All(&playlists)
-  return playlists, err
+  return u.sortPlaylists(playlists), err
+}
+
+func (u User) SavePlaylists(playlists []Playlist) error {
+  playlists = u.recalculatePlaylists(playlists)
+  for _, playlist := range playlists {
+    if err := playlist.Save(); err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+func (u User) sortPlaylists(playlists []Playlist) []Playlist {
+  payload := make([]Playlist, len(playlists))
+  for _, v := range playlists {
+    payload[v.Order] = v
+  }
+  return payload
+}
+
+func (u User) recalculatePlaylists(playlists []Playlist) []Playlist {
+  payload := make([]Playlist, len(playlists))
+  for i, playlist := range playlists {
+    playlist.Order = i
+    payload = append(payload, playlist)
+  }
+  return payload
 }
 
 func (u User) Struct() interface{} {
