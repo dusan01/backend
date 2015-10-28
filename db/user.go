@@ -7,7 +7,7 @@ import (
   "gopkg.in/mgo.v2/bson"
   "hybris/debug"
   "hybris/structs"
-  "regexp"
+  "hybris/validation"
   "strings"
   "sync"
   "time"
@@ -72,7 +72,7 @@ func NewUser(username string) (*User, error) {
   username = strings.ToLower(username)
 
   // Validate info
-  if length := len(username); length < 2 || length > 20 || !regexp.MustCompile(`^[a-zA-Z0-9_\-\.]+$`).MatchString(username) {
+  if !validation.Username(username) {
     go debug.Log("[db > NewUser] Invalid username: %s", username)
     return nil, errors.New("Invalid username.")
   }

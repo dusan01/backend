@@ -7,7 +7,7 @@ import (
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
   "hybris/debug"
-  "regexp"
+  "hybris/validation"
   "strings"
 )
 
@@ -72,11 +72,11 @@ func NewEmailUser(username, email, password string) (*db.User, error) {
   }
 
   email = strings.ToLower(email)
-  if length := len(email); length > 100 || !regexp.MustCompile(`@`).MatchString(email) {
+  if !validation.Email(email) {
     go debug.Log("[atlas > NewEmailUser] Email is invalid: [%s]", email)
     return nil, errors.New("Invalid email.")
   }
-  if length := len(password); length < 2 || length > 72 {
+  if !validation.Password(password) {
     go debug.Log("[atlas > NewEmailUser] Password is invalid")
     return nil, errors.New("Invalid password.")
   }
