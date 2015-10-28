@@ -16,6 +16,7 @@ import (
   "hybris/db"
   "hybris/enums"
   "hybris/socket"
+  "hybris/validation"
   "net/http"
   "net/url"
   "strings"
@@ -302,6 +303,11 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
 func takenUsernameHandler(res http.ResponseWriter, req *http.Request) {
   username := strings.TrimSpace(req.URL.Query().Get(":username"))
 
+  if !validation.Username(username) {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Invalid username.", nil})
+    return
+  }
+
   if _, err := db.GetUser(bson.M{"username": username}); err == mgo.ErrNotFound {
     WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", false})
     return
@@ -315,6 +321,11 @@ func takenUsernameHandler(res http.ResponseWriter, req *http.Request) {
 
 func takenEmailHandler(res http.ResponseWriter, req *http.Request) {
   email := strings.TrimSpace(req.URL.Query().Get(":email"))
+
+  if !validation.Email(email) {
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Invalid email.", nil})
+    return
+  }
 
   if _, err := db.GetUser(bson.M{"email": email}); err == mgo.ErrNotFound {
     WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", false})
