@@ -1,11 +1,15 @@
 package structs
 
+import (
+  "gopkg.in/mgo.v2/bson"
+)
+
 type PlaylistInfo struct {
-  Name     string `json:"name"`
-  Id       string `json:"id"`
-  OwnerId  string `json:"ownerId"`
-  Selected bool   `json:"selected"`
-  Order    int    `json:"order"`
+  Id       bson.ObjectId `json:"id"`
+  Name     string        `json:"name"`
+  OwnerId  bson.ObjectId `json:"ownerId"`
+  Selected bool          `json:"selected"`
+  Order    int           `json:"order"`
 
   Length int `json:"length"`
 }

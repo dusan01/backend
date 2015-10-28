@@ -1,9 +1,14 @@
 package structs
 
+import (
+  "gopkg.in/mgo.v2/bson"
+  "time"
+)
+
 type Chat struct {
-  Id      string `json:"id"`
-  UserId  string `json:"userId"`
-  Me      bool   `json:"me"`
-  Message string `json:"message"`
-  Time    string `json:"time"`
+  Id      bson.ObjectId `json:"id"`
+  UserId  bson.ObjectId `json:"userId"`
+  Me      bool          `json:"me"`
+  Message string        `json:"message"`
+  Time    time.Time     `json:"time"`
 }

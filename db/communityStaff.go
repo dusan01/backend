@@ -1,48 +1,42 @@
 package db
 
 import (
-  "code.google.com/p/go-uuid/uuid"
-  "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/structs"
-  "strings"
-  "sync"
   "time"
 )
 
 type CommunityStaff struct {
-  sync.Mutex
-
   // Community Staff Id
-  Id string `json:"id" bson:"id"`
+  Id bson.ObjectId `json:"id" bson:"_id"`
 
   // Community Id
   // See /db/community/id
-  CommunityId string `json:"communityId" bson:"communityId"`
+  CommunityId bson.ObjectId `json:"communityId" bson:"communityId"`
 
   // User Id
   // See /db/user/id
-  UserId string `json:"userId" bson:"userId"`
+  UserId bson.ObjectId `json:"userId" bson:"userId"`
 
   // Role
   // See enum/COMMUNITY_ROLES
   Role int `json:"role" bson:"role"`
 
-  // The date this objects was created in RFC 3339
-  Created string `json:"created" bson:"created"`
+  // The date this objects was created
+  Created time.Time `json:"created" bson:"created"`
 
-  // The date this object was updated last in RFC 3339
-  Updated string `json:"updated" bson:"updated"`
+  // The date this object was updated last
+  Updated time.Time `json:"updated" bson:"updated"`
 }
 
-func NewCommunityStaff(community string, user string, role int) *CommunityStaff {
+func NewCommunityStaff(community, user bson.ObjectId, role int) *CommunityStaff {
   return &CommunityStaff{
-    Id:          strings.Replace(uuid.NewUUID().String(), "-", "", -1),
+    Id:          bson.NewObjectId(),
     CommunityId: community,
     UserId:      user,
     Role:        role,
-    Created:     time.Now().Format(time.RFC3339),
-    Updated:     time.Now().Format(time.RFC3339),
+    Created:     time.Now(),
+    Updated:     time.Now(),
   }
 }
 
@@ -52,24 +46,14 @@ func GetCommunityStaff(query interface{}) (*CommunityStaff, error) {
   return &cs, err
 }
 
-func StructCommunityStaff(cs []CommunityStaff) []structs.StaffItem {
-  var payload []structs.StaffItem
-  for _, s := range cs {
-    payload = append(payload, s.Struct())
-  }
-  return payload
-}
-
 func (cs CommunityStaff) Save() error {
-  err := DB.C("communityStaff").Update(bson.M{"id": cs.Id}, cs)
-  if err == mgo.ErrNotFound {
-    return DB.C("communityStaff").Insert(cs)
-  }
+  cs.Updated = time.Now()
+  _, err := DB.C("communityStaff").UpsertId(cs.Id, cs)
   return err
 }
 
 func (cs CommunityStaff) Delete() error {
-  return DB.C("communityStaff").Remove(bson.M{"id": cs.Id})
+  return DB.C("communityStaff").RemoveId(cs.Id)
 }
 
 func (cs CommunityStaff) Struct() structs.StaffItem {
@@ -77,4 +61,12 @@ func (cs CommunityStaff) Struct() structs.StaffItem {
     UserId: cs.UserId,
     Role:   cs.Role,
   }
+}
+
+func StructCommunityStaff(cs []CommunityStaff) []structs.StaffItem {
+  var payload []structs.StaffItem
+  for _, s := range cs {
+    payload = append(payload, s.Struct())
+  }
+  return payload
 }

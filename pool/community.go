@@ -12,15 +12,15 @@ import (
 
 type Community struct {
   sync.Mutex
-  C     *db.Community
-  M     *structs.CommunityPlayingInfo
-  H     *db.CommunityHistory
-  P     []*db.User
-  W     []string
-  Timer *time.Timer
+  Community  *db.Community
+  Media      *structs.CommunityPlayingInfo
+  History    *db.CommunityHistory
+  Population []*db.User
+  Waitlist   []bson.ObjectId
+  Timer      *time.Timer
 }
 
-var Communities = map[string]*Community{}
+var Communities = map[bson.ObjectId]*Community{}
 
 func NewCommunity(community *db.Community) *Community {
   if v, ok := Communities[community.Id]; ok {
@@ -28,12 +28,12 @@ func NewCommunity(community *db.Community) *Community {
   }
 
   c := &Community{
-    C:     community,
-    M:     nil,
-    H:     nil,
-    P:     []*db.User{},
-    W:     []string{},
-    Timer: time.NewTimer(0),
+    Community:  community,
+    Media:      nil,
+    History:    nil,
+    Population: []*db.User{},
+    Waitlist:   []bson.ObjectId{},
+    Timer:      time.NewTimer(0),
   }
 
   Communities[community.Id] = c
@@ -43,8 +43,8 @@ func NewCommunity(community *db.Community) *Community {
 
 func (c *Community) GetState() structs.CommunityState {
   return structs.CommunityState{
-    Waitlist:   c.W,
-    NowPlaying: c.M,
+    Waitlist:   c.Waitlist,
+    NowPlaying: c.Media,
   }
 }
 
@@ -54,28 +54,28 @@ func (c *Community) Advance() {
 
   _ = c.Timer.Stop()
 
-  if c.H != nil {
-    if err := c.H.Save(); err != nil {
-      go debug.Log("[pool > Community.Advance] Failed to save community history. Details: [[[ %s ]]]", c.H.Id)
+  if c.History != nil {
+    if err := c.History.Save(); err != nil {
+      go debug.Log("[pool > Community.Advance] Failed to save community history. Details: [[[ %s ]]]", c.History.Id)
     }
   }
 
-  if c.M != nil && c.C.DjRecycling {
-    c.W = append(c.W, c.M.DjId)
+  if c.Media != nil && c.Community.DjRecycling {
+    c.Waitlist = append(c.Waitlist, c.Media.DjId)
   }
 
-  c.M = nil
+  c.Media = nil
 
-  if len(c.W) > 0 {
+  if len(c.Waitlist) > 0 {
 
-    playlist, err := Clients[c.W[0]].U.GetActivePlaylist()
+    playlist, err := Clients[c.Waitlist[0]].U.GetActivePlaylist()
     if err != nil {
-      go debug.Log("[pool > Community.Advance] Failed to retrieve playlist. Details: [[[ %s ||| %s ]]]", c.W[0], err.Error())
+      go debug.Log("[pool > Community.Advance] Failed to retrieve playlist. Details: [[[ %s ||| %s ]]]", c.Waitlist[0], err.Error())
       return
     }
 
     if playlist == nil {
-      go debug.Log("[pool > Community.Advance] Active playlist is nil for user %s", c.W[0])
+      go debug.Log("[pool > Community.Advance] Active playlist is nil for user %s", c.Waitlist[0])
       return
     }
 
@@ -100,28 +100,28 @@ func (c *Community) Advance() {
       return
     }
 
-    c.H = db.NewCommunityHistory(c.C.Id, c.W[0], playlistItem.Id, playlistItem.MediaId)
-    c.H.Artist = playlistItem.Artist
-    c.H.Title = playlistItem.Title
+    c.History = db.NewCommunityHistory(c.Community.Id, c.Waitlist[0], playlistItem.Id, playlistItem.MediaId)
+    c.History.Artist = playlistItem.Artist
+    c.History.Title = playlistItem.Title
 
-    c.M = &structs.CommunityPlayingInfo{
-      DjId:    c.W[0],
-      Started: c.H.Created,
+    c.Media = &structs.CommunityPlayingInfo{
+      DjId:    c.Waitlist[0],
+      Started: c.History.Created,
       Media:   structs.ResolvedMediaInfo{media.Struct(), playlistItem.Artist, playlistItem.Title},
       Votes: structs.Votes{
-        []string{},
-        []string{},
-        []string{},
+        []bson.ObjectId{},
+        []bson.ObjectId{},
+        []bson.ObjectId{},
       },
     }
 
-    c.W = c.W[1:]
+    c.Waitlist = c.Waitlist[1:]
     c.Timer = time.AfterFunc(time.Duration(media.Length)*time.Second, c.Advance)
   }
 
-  if c.M != nil {
-    go c.Emit(NewEvent("waitlist.update", c.W))
-    go c.Emit(NewEvent("advance", c.M))
+  if c.Media != nil {
+    go c.Emit(NewEvent("waitlist.update", c.Waitlist))
+    go c.Emit(NewEvent("advance", c.Media))
   }
 }
 
@@ -129,7 +129,7 @@ func (c *Community) Join(user *db.User) int {
   c.Lock()
   defer c.Unlock()
 
-  for _, p := range c.P {
+  for _, p := range c.Population {
     if p.Id == user.Id {
       // They're already in the community
       return enums.RESPONSE_CODES.BAD_REQUEST
@@ -140,7 +140,7 @@ func (c *Community) Join(user *db.User) int {
   // will send the 'user.join' event to the client that has just jojned the
   // community also
   go c.Emit(NewEvent("user.join", user.Struct()))
-  c.P = append(c.P, user)
+  c.Population = append(c.Population, user)
   return enums.RESPONSE_CODES.OK
 }
 
@@ -149,11 +149,11 @@ func (c *Community) Leave(user *db.User) int {
   c.Lock()
   defer c.Unlock()
 
-  for i, p := range c.P {
+  for i, p := range c.Population {
     if p.Id == user.Id {
-      copy(c.P[i:], c.P[i+1:])
-      c.P[len(c.P)-1] = nil
-      c.P = c.P[:len(c.P)-1]
+      copy(c.Population[i:], c.Population[i+1:])
+      c.Population[len(c.Population)-1] = nil
+      c.Population = c.Population[:len(c.Population)-1]
       go c.Emit(NewEvent("user.leave", user.Struct()))
       return enums.RESPONSE_CODES.OK
     }
@@ -164,7 +164,7 @@ func (c *Community) Leave(user *db.User) int {
 }
 
 func (c *Community) Emit(e Message) {
-  population := c.P
+  population := c.Population
   for _, p := range population {
     if client, ok := Clients[p.Id]; ok {
       go e.Dispatch(client)
@@ -176,45 +176,45 @@ func (c *Community) Emit(e Message) {
 func (c *Community) Vote(user *db.User, voteType string) int {
   c.Lock()
   defer c.Unlock()
-  if c.M == nil {
+  if c.Media == nil {
     return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
   if voteType == "save" {
-    for _, id := range c.M.Votes.Save {
+    for _, id := range c.Media.Votes.Save {
       if id == user.Id {
         return enums.RESPONSE_CODES.BAD_REQUEST
       }
     }
-    c.M.Votes.Save = append(c.M.Votes.Save, user.Id)
+    c.Media.Votes.Save = append(c.Media.Votes.Save, user.Id)
     voteType = "woot"
   }
 
-  for i, id := range c.M.Votes.Woot {
+  for i, id := range c.Media.Votes.Woot {
     if id == user.Id {
       if voteType == "woot" {
         return enums.RESPONSE_CODES.BAD_REQUEST
       }
-      c.M.Votes.Woot = append(c.M.Votes.Woot[:i], c.M.Votes.Woot[i+1:]...)
+      c.Media.Votes.Woot = append(c.Media.Votes.Woot[:i], c.Media.Votes.Woot[i+1:]...)
       break
     }
   }
 
-  for i, id := range c.M.Votes.Meh {
+  for i, id := range c.Media.Votes.Meh {
     if id == user.Id {
       if voteType == "meh" {
         return enums.RESPONSE_CODES.BAD_REQUEST
       }
-      c.M.Votes.Meh = append(c.M.Votes.Meh[:i], c.M.Votes.Meh[i+1:]...)
+      c.Media.Votes.Meh = append(c.Media.Votes.Meh[:i], c.Media.Votes.Meh[i+1:]...)
       break
     }
   }
 
   switch voteType {
   case "woot":
-    c.M.Votes.Woot = append(c.M.Votes.Woot, user.Id)
+    c.Media.Votes.Woot = append(c.Media.Votes.Woot, user.Id)
   case "meh":
-    c.M.Votes.Meh = append(c.M.Votes.Meh, user.Id)
+    c.Media.Votes.Meh = append(c.Media.Votes.Meh, user.Id)
   }
 
   return enums.RESPONSE_CODES.OK
@@ -222,17 +222,17 @@ func (c *Community) Vote(user *db.User, voteType string) int {
   // Emit a vote update
 }
 
-func (c *Community) Move(id string, position int) int {
+func (c *Community) Move(id bson.ObjectId, position int) int {
   c.Lock()
   defer c.Unlock()
 
-  if position >= len(c.W) {
+  if position >= len(c.Waitlist) {
     // Position is out of bounds
     return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
   current := -1
-  for i, v := range c.W {
+  for i, v := range c.Waitlist {
     if v == id {
       current = i
       break
@@ -243,9 +243,9 @@ func (c *Community) Move(id string, position int) int {
     return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
-  c.W = append(c.W[:current], c.W[current+1:]...)
-  c.W = append(c.W[:position], append([]string{id}, c.W[position:]...)...)
-  go c.Emit(NewEvent("waitlist.update", c.W))
+  c.Waitlist = append(c.Waitlist[:current], c.Waitlist[current+1:]...)
+  c.Waitlist = append(c.Waitlist[:position], append([]bson.ObjectId{id}, c.Waitlist[position:]...)...)
+  go c.Emit(NewEvent("waitlist.update", c.Waitlist))
   return enums.RESPONSE_CODES.OK
 }
 
@@ -253,30 +253,30 @@ func (c *Community) JoinWaitlist(user *db.User) int {
   c.Lock()
   defer c.Unlock()
 
-  if len(c.W) > 30 {
+  if len(c.Waitlist) > 30 {
     // Waitlist is full
     return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
-  if c.M != nil && c.M.DjId == user.Id {
+  if c.Media != nil && c.Media.DjId == user.Id {
     // They're currently Djing
     return enums.RESPONSE_CODES.BAD_REQUEST
   }
 
-  for _, id := range c.W {
+  for _, id := range c.Waitlist {
     if id == user.Id {
       // The user is already in the waitlist
       return enums.RESPONSE_CODES.BAD_REQUEST
     }
   }
 
-  c.W = append(c.W, user.Id)
-  if c.M == nil {
+  c.Waitlist = append(c.Waitlist, user.Id)
+  if c.Media == nil {
     go func() {
       c.Advance()
     }()
   } else {
-    go c.Emit(NewEvent("waitlist.update", c.W))
+    go c.Emit(NewEvent("waitlist.update", c.Waitlist))
   }
   return enums.RESPONSE_CODES.OK
 }
@@ -285,20 +285,20 @@ func (c *Community) LeaveWaitlist(user *db.User) int {
   c.Lock()
   defer c.Unlock()
 
-  if c.M != nil && c.M.DjId == user.Id {
-    recycling := c.C.DjRecycling
-    c.C.DjRecycling = false
+  if c.Media != nil && c.Media.DjId == user.Id {
+    recycling := c.Community.DjRecycling
+    c.Community.DjRecycling = false
     c.Unlock()
     c.Advance()
     c.Lock()
-    c.C.DjRecycling = recycling
+    c.Community.DjRecycling = recycling
     return enums.RESPONSE_CODES.OK
   }
 
-  for i, id := range c.W {
+  for i, id := range c.Waitlist {
     if id == user.Id {
-      c.W = append(c.W[:i], c.W[i+1:]...)
-      go c.Emit(NewEvent("waitlist.update", c.W))
+      c.Waitlist = append(c.Waitlist[:i], c.Waitlist[i+1:]...)
+      go c.Emit(NewEvent("waitlist.update", c.Waitlist))
       return enums.RESPONSE_CODES.OK
     }
   }
@@ -310,9 +310,9 @@ func (c *Community) LeaveWaitlist(user *db.User) int {
 //   cs := db.NewCommunityStaff()
 // }
 
-func (c *Community) GetUser(userId string) *db.User {
+func (c *Community) GetUser(userId bson.ObjectId) *db.User {
   var u *db.User = nil
-  for _, v := range c.P {
+  for _, v := range c.Population {
     if v.Id == userId {
       u = v
       break
@@ -322,7 +322,7 @@ func (c *Community) GetUser(userId string) *db.User {
 }
 
 func (c *Community) HasPermission(user *db.User, required int) bool {
-  staff, err := c.C.GetStaff()
+  staff, err := c.Community.GetStaff()
   if err != nil {
     return false
   }

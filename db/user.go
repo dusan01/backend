@@ -1,24 +1,18 @@
 package db
 
 import (
-  "code.google.com/p/go-uuid/uuid"
   "errors"
-  "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/debug"
   "hybris/structs"
   "hybris/validation"
   "strings"
-  "sync"
   "time"
 )
 
 type User struct {
-  sync.Mutex
-
-  // Primary key -- Permanent ID of the user.
-  // Represented by a UUID with any '-' removed
-  Id string `json:"id" bson:"id"`
+  // User Id
+  Id bson.ObjectId `json:"id" bson:"_id"`
 
   // The user's username (all in lowercase)
   // Validation
@@ -59,11 +53,11 @@ type User struct {
   // Used to purchase fancy items and features
   Diamonds int `json:"diamonds" bson:"diamonds"`
 
-  // The date this objects was created in RFC 3339
-  Created string `json:"created" bson:"created"`
+  // The date this objects was created
+  Created time.Time `json:"created" bson:"created"`
 
-  // The date this object was updated last in RFC 3339
-  Updated string `json:"updated" bson:"updated"`
+  // The date this object was updated last
+  Updated time.Time `json:"updated" bson:"updated"`
 }
 
 func NewUser(username string) (*User, error) {
@@ -84,12 +78,12 @@ func NewUser(username string) (*User, error) {
   }
 
   u := &User{
-    Id:          strings.Replace(uuid.NewUUID().String(), "-", "", -1),
+    Id:          bson.NewObjectId(),
     Username:    username,
     DisplayName: displayName,
     GlobalRole:  2,
-    Created:     time.Now().Format(time.RFC3339),
-    Updated:     time.Now().Format(time.RFC3339),
+    Created:     time.Now(),
+    Updated:     time.Now(),
   }
   return u, nil
 }
@@ -101,10 +95,8 @@ func GetUser(query interface{}) (*User, error) {
 }
 
 func (u User) Save() error {
-  err := DB.C("users").Update(bson.M{"id": u.Id}, u)
-  if err == mgo.ErrNotFound {
-    return DB.C("users").Insert(u)
-  }
+  u.Updated = time.Now()
+  _, err := DB.C("users").UpsertId(u.Id, u)
   return err
 }
 

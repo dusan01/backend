@@ -6,23 +6,23 @@ import (
   "time"
 )
 
-type Ban struct {
-  // Ban Id
+type Mute struct {
+  // Mute Id
   Id bson.ObjectId `json:"id" bson:"id"`
 
-  // Bannee Id
+  // Muteee Id
   // See /db/user/id
-  BanneeId bson.ObjectId `json:"banneeId" bson:"banneeId"`
+  MuteeId bson.ObjectId `json:"muteeId" bson:"muteeId"`
 
-  // Banner Id
+  // Muter Id
   // See /db/user/id
-  BannerId bson.ObjectId `json:"bannerId" bson:"bannerId"`
+  MuterId bson.ObjectId `json:"muterId" bson:"muterId"`
 
   // Community Id
   // See /db/community/id
   CommunityId bson.ObjectId `json:"communityId" bson:"communityId"`
 
-  // Reason for the ban
+  // Reason for the mute
   // Validation
   //  0-500 Characters
   Reason string `json:"reason" bson:"reason"`
@@ -37,11 +37,11 @@ type Ban struct {
   Updated time.Time `json:"updated" bson:"updated"`
 }
 
-func NewBan(bannee, banner, community bson.ObjectId, reason string, until *time.Time) *Ban {
-  return &Ban{
+func NewMute(mutee, muter, community bson.ObjectId, reason string, until *time.Time) *Mute {
+  return &Mute{
     Id:          bson.NewObjectId(),
-    BanneeId:    bannee,
-    BannerId:    banner,
+    MuteeId:     mutee,
+    MuterId:     muter,
     CommunityId: community,
     Reason:      reason,
     Until:       until,
@@ -50,27 +50,27 @@ func NewBan(bannee, banner, community bson.ObjectId, reason string, until *time.
   }
 }
 
-func GetBan(query interface{}) (*Ban, error) {
-  var b Ban
-  err := DB.C("bans").Find(query).One(&b)
-  return &b, err
+func GetMute(query interface{}) (*Mute, error) {
+  var m Mute
+  err := DB.C("mutes").Find(query).One(&m)
+  return &m, err
 }
 
-func (b Ban) Save() error {
-  b.Updated = time.Now()
-  _, err := DB.C("bans").UpsertId(b.Id, b)
+func (m Mute) Save() error {
+  m.Updated = time.Now()
+  _, err := DB.C("mutes").UpsertId(m.Id, m)
   return err
 }
 
-func (b Ban) Delete() error {
-  return DB.C("bans").RemoveId(b.Id)
+func (m Mute) Delete() error {
+  return DB.C("mutes").RemoveId(m.Id)
 }
 
-func (b Ban) Struct() structs.Ban {
-  return structs.Ban{
-    Banner: b.BannerId,
-    Bannee: b.BanneeId,
-    Reason: b.Reason,
-    Until:  b.Until,
+func (m Mute) Struct() structs.Mute {
+  return structs.Mute{
+    Mutee:  m.MuteeId,
+    Muter:  m.MuterId,
+    Reason: m.Reason,
+    Until:  m.Until,
   }
 }

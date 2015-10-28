@@ -1,22 +1,17 @@
 package db
 
 import (
-  "code.google.com/p/go-uuid/uuid"
   "errors"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/downloader"
   "hybris/structs"
-  "strings"
-  "sync"
   "time"
 )
 
 type Media struct {
-  sync.Mutex
-
   // Media Id
-  Id string `json:"id" bson:"id"`
+  Id bson.ObjectId `json:"id" bson:"_id"`
 
   // Type
   // The tpye of media
@@ -65,11 +60,11 @@ type Media struct {
   // The ammount of playlists this media has been inserted into
   Playlists int `json:"playlists" bson:"playlists"`
 
-  // The date this objects was created in RFC 3339
-  Created string `json:"created" bson:"created"`
+  // The date this objects was created
+  Created time.Time `json:"created" bson:"created"`
 
-  // The date this object was updated last in RFC 3339
-  Updated string `json:"updated" bson:"updated"`
+  // The date this object was updated last
+  Updated time.Time `json:"updated" bson:"updated"`
 }
 
 func NewMedia(id string, platform int) (*Media, error) {
@@ -95,7 +90,7 @@ func NewMedia(id string, platform int) (*Media, error) {
   }
 
   return &Media{
-    Id:      strings.Replace(uuid.NewUUID().String(), "-", "", -1),
+    Id:      bson.NewObjectId(),
     Type:    platform,
     MediaId: id,
     Image:   image,
@@ -103,8 +98,8 @@ func NewMedia(id string, platform int) (*Media, error) {
     Title:   title,
     Blurb:   blurb,
     Length:  length,
-    Created: time.Now().Format(time.RFC3339),
-    Updated: time.Now().Format(time.RFC3339),
+    Created: time.Now(),
+    Updated: time.Now(),
   }, err
 }
 
@@ -115,10 +110,8 @@ func GetMedia(query interface{}) (*Media, error) {
 }
 
 func (m Media) Save() error {
-  err := DB.C("media").Update(bson.M{"id": m.Id}, m)
-  if err == mgo.ErrNotFound {
-    return DB.C("media").Insert(m)
-  }
+  m.Updated = time.Now()
+  _, err := DB.C("media").UpsertId(m.Id, m)
   return err
 }
 

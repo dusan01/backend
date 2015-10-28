@@ -1,22 +1,17 @@
 package db
 
 import (
-  "code.google.com/p/go-uuid/uuid"
   "errors"
-  "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/structs"
   "regexp"
   "strings"
-  "sync"
   "time"
 )
 
 type Community struct {
-  sync.Mutex
-
   // Community Id
-  Id string `json:"id" bson:"id"`
+  Id bson.ObjectId `json:"id" bson:"_id"`
 
   // Room URL
   // Validation
@@ -32,7 +27,7 @@ type Community struct {
 
   // The id of the host
   // db/user/id
-  HostId string `json:"hostId" bson:"hostId"`
+  HostId bson.ObjectId `json:"hostId" bson:"hostId"`
 
   // Community description
   // Validation
@@ -56,14 +51,14 @@ type Community struct {
   // Whether or not the community plays NSFW content or not
   Nsfw bool `json:"nsfw" bson:"nsfw"`
 
-  // The date this objects was created in RFC 3339
-  Created string `json:"created" bson:"created"`
+  // The date this objects was created
+  Created time.Time `json:"created" bson:"created"`
 
-  // The date this object was updated last in RFC 3339
-  Updated string `json:"updated" bson:"updated"`
+  // The date this object was updated
+  Updated time.Time `json:"updated" bson:"updated"`
 }
 
-func NewCommunity(host, url, name string, nsfw bool) (*Community, error) {
+func NewCommunity(host bson.ObjectId, url, name string, nsfw bool) (*Community, error) {
   url = strings.ToLower(url)
 
   // Validation
@@ -80,15 +75,15 @@ func NewCommunity(host, url, name string, nsfw bool) (*Community, error) {
   }
 
   return &Community{
-    Id:              strings.Replace(uuid.NewUUID().String(), "-", "", -1),
+    Id:              bson.NewObjectId(),
     Url:             url,
     Name:            name,
     HostId:          host,
     WaitlistEnabled: true,
     DjRecycling:     true,
     Nsfw:            nsfw,
-    Created:         time.Now().Format(time.RFC3339),
-    Updated:         time.Now().Format(time.RFC3339),
+    Created:         time.Now(),
+    Updated:         time.Now(),
   }, nil
 }
 
@@ -96,20 +91,6 @@ func GetCommunity(query interface{}) (*Community, error) {
   var c Community
   err := DB.C("communities").Find(query).One(&c)
   return &c, err
-}
-
-func (c Community) Struct() structs.CommunityInfo {
-  return structs.CommunityInfo{
-    Id:              c.Id,
-    Url:             c.Url,
-    Name:            c.Name,
-    HostId:          c.HostId,
-    Description:     c.Description,
-    WelcomeMessage:  c.WelcomeMessage,
-    WaitlistEnabled: c.WaitlistEnabled,
-    DjRecycling:     c.DjRecycling,
-    Nsfw:            c.Nsfw,
-  }
 }
 
 func (c Community) GetStaff() ([]CommunityStaff, error) {
@@ -125,9 +106,21 @@ func (c Community) GetHistory(max int) ([]CommunityHistory, error) {
 }
 
 func (c Community) Save() error {
-  err := DB.C("communities").Update(bson.M{"id": c.Id}, c)
-  if err == mgo.ErrNotFound {
-    return DB.C("communities").Insert(c)
-  }
+  c.Updated = time.Now()
+  _, err := DB.C("communities").UpsertId(c.Id, c)
   return err
+}
+
+func (c Community) Struct() structs.CommunityInfo {
+  return structs.CommunityInfo{
+    Id:              c.Id,
+    Url:             c.Url,
+    Name:            c.Name,
+    HostId:          c.HostId,
+    Description:     c.Description,
+    WelcomeMessage:  c.WelcomeMessage,
+    WaitlistEnabled: c.WaitlistEnabled,
+    DjRecycling:     c.DjRecycling,
+    Nsfw:            c.Nsfw,
+  }
 }

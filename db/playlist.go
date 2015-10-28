@@ -1,21 +1,15 @@
 package db
 
 import (
-  "code.google.com/p/go-uuid/uuid"
   "errors"
-  "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
   "hybris/structs"
-  "strings"
-  "sync"
   "time"
 )
 
 type Playlist struct {
-  sync.Mutex
-
   // Playist Id
-  Id string `json:"id" bson:"id"`
+  Id bson.ObjectId `json:"id" bson:"_id"`
 
   // Playlist name
   // Validation
@@ -23,7 +17,7 @@ type Playlist struct {
   Name string `json:"name" bson:"name"`
 
   // /db/user/id
-  OwnerId string `json:"ownerId" bson:"ownerId"`
+  OwnerId bson.ObjectId `json:"ownerId" bson:"ownerId"`
 
   // Selected
   // Whether or not the playlist is selected
@@ -34,25 +28,25 @@ type Playlist struct {
   // The order that playlists are displayed in the UI
   Order int `json:"order" bson:"order"`
 
-  // The date this objects was created in RFC 3339
-  Created string `json:"created" bson:"created"`
+  // The date this objects was create
+  Created time.Time `json:"created" bson:"created"`
 
-  // The date this object was updated last in RFC 3339
-  Updated string `json:"updated" bson:"updated"`
+  // The date this object was updated last
+  Updated time.Time `json:"updated" bson:"updated"`
 }
 
-func NewPlaylist(name, ownerId string, selected bool) (*Playlist, error) {
+func NewPlaylist(name string, ownerId bson.ObjectId, selected bool) (*Playlist, error) {
   if length := len(name); length < 1 || length > 30 {
     return nil, errors.New("Name is invalid")
   }
 
   return &Playlist{
-    Id:       strings.Replace(uuid.NewUUID().String(), "-", "", -1),
+    Id:       bson.NewObjectId(),
     Name:     name,
     OwnerId:  ownerId,
     Selected: selected,
-    Created:  time.Now().Format(time.RFC3339),
-    Updated:  time.Now().Format(time.RFC3339),
+    Created:  time.Now(),
+    Updated:  time.Now(),
   }, nil
 }
 
@@ -62,43 +56,11 @@ func GetPlaylist(query interface{}) (*Playlist, error) {
   return &p, err
 }
 
-func StructPlaylists(playlists []Playlist) []structs.PlaylistInfo {
-  var payload []structs.PlaylistInfo
-  for _, p := range playlists {
-    payload = append(payload, p.Struct())
-  }
-  return payload
-}
-
-func (p Playlist) Struct() structs.PlaylistInfo {
-  items, err := p.GetItems()
-  if err != nil {
-    return structs.PlaylistInfo{}
-  }
-
-  return structs.PlaylistInfo{
-    Name:     p.Name,
-    Id:       p.Id,
-    OwnerId:  p.OwnerId,
-    Selected: p.Selected,
-    Order:    p.Order,
-    Length:   len(items),
-  }
-}
-
-func (p Playlist) Save() error {
-  err := DB.C("playlists").Update(bson.M{"id": p.Id}, p)
-  if err == mgo.ErrNotFound {
-    return DB.C("playlists").Insert(p)
-  }
-  return err
-}
-
 func (p Playlist) Delete() error {
-  if err := DB.C("playlistItems").Remove(bson.M{"playlistId": p.Id}); err != nil {
+  if err := DB.C("playlistItems").RemoveId(bson.M{"playlistId": p.Id}); err != nil {
     return err
   }
-  return DB.C("playlists").Remove(bson.M{"id": p.Id})
+  return DB.C("playlists").RemoveId(p.Id)
 }
 
 func (p Playlist) Select(u *User) error {
@@ -150,4 +112,34 @@ func (p Playlist) recalculateItems(items []PlaylistItem) []PlaylistItem {
     payload = append(payload, item)
   }
   return payload
+}
+
+func (p Playlist) Struct() structs.PlaylistInfo {
+  items, err := p.GetItems()
+  if err != nil {
+    return structs.PlaylistInfo{}
+  }
+
+  return structs.PlaylistInfo{
+    Name:     p.Name,
+    Id:       p.Id,
+    OwnerId:  p.OwnerId,
+    Selected: p.Selected,
+    Order:    p.Order,
+    Length:   len(items),
+  }
+}
+
+func StructPlaylists(playlists []Playlist) []structs.PlaylistInfo {
+  var payload []structs.PlaylistInfo
+  for _, p := range playlists {
+    payload = append(payload, p.Struct())
+  }
+  return payload
+}
+
+func (p Playlist) Save() error {
+  p.Updated = time.Now()
+  _, err := DB.C("playlists").UpsertId(p.Id, p)
+  return err
 }

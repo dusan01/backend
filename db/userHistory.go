@@ -1,27 +1,23 @@
 package db
 
 import (
-  "code.google.com/p/go-uuid/uuid"
-  "strings"
-  "sync"
+  "gopkg.in/mgo.v2/bson"
   "time"
 )
 
 type UserHistory struct {
-  sync.Mutex
-
   // User History Id
-  Id string `json:"id" bson:"id"`
+  Id bson.ObjectId `json:"id" bson:"_id"`
 
   // user Id
   // The user that this belongs to
   // See /db/user/id
-  UserId string `json:"userId" bson:"userId"`
+  UserId bson.ObjectId `json:"userId" bson:"userId"`
 
   // PlaylistItem Id
   // The id of the playlist item
   // See /db/playliatItem/id
-  PlaylistItemId string `json:"playlistItemId" bson:"playlistItemId"`
+  PlaylistItemId bson.ObjectId `json:"playlistItemId" bson:"playlistItemId"`
 
   // Media Id
   // The media id
@@ -45,23 +41,23 @@ type UserHistory struct {
   // Amount of times people have saved this
   Saves int `json:"saves" bson:"saves"`
 
-  // The date this objects was created in RFC 3339
-  Created string `json:"created" bson:"created"`
+  // The date this objects was created
+  Created time.Time `json:"created" bson:"created"`
 
-  // The date this object was updated last in RFC 3339
-  Updated string `json:"updated" bson:"updated"`
+  // The date this object was updated last
+  Updated time.Time `json:"updated" bson:"updated"`
 }
 
-func NewUserHistory(userId, playlistItemId, mediaId string) *UserHistory {
+func NewUserHistory(userId, playlistItemId bson.ObjectId, mediaId string) *UserHistory {
   return &UserHistory{
-    Id:             strings.Replace(uuid.NewUUID().String(), "-", "", -1),
+    Id:             bson.NewObjectId(),
     UserId:         userId,
     PlaylistItemId: playlistItemId,
     MediaId:        mediaId,
     Woots:          0,
     Mehs:           0,
     Saves:          0,
-    Created:        time.Now().Format(time.RFC3339),
-    Updated:        time.Now().Format(time.RFC3339),
+    Created:        time.Now(),
+    Updated:        time.Now(),
   }
 }
