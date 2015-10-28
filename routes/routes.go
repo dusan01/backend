@@ -187,7 +187,7 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   // ReCaptcha
   captchaClient := &http.Client{}
   captchaRes, err := captchaClient.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
-    "secret":   {"6LfDhg4TAAAAALGzHUmWr-zcuNVgE5oU2PYjVj4I"},
+    "secret":   {"6LdzaA8TAAAAAE7puUC6qhn2b2in89iiPL9s8_Nv"},
     "response": {data.Recaptcha},
     "remoteip": {strings.Split(req.RemoteAddr, ":")[0]},
   })
@@ -206,7 +206,7 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   }
 
   if !recaptchaData.Success {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Invalid recaptcha.", nil})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Recaptcha invalid.", nil})
     return
   }
 
@@ -309,14 +309,18 @@ func takenUsernameHandler(res http.ResponseWriter, req *http.Request) {
   }
 
   if _, err := db.GetUser(bson.M{"username": username}); err == mgo.ErrNotFound {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", false})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", map[string]interface{}{
+      "taken": false,
+    }})
     return
   } else if err != nil {
     WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
     return
   }
 
-  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "", true})
+  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "", map[string]interface{}{
+    "taken": true,
+  }})
 }
 
 func takenEmailHandler(res http.ResponseWriter, req *http.Request) {
@@ -328,14 +332,18 @@ func takenEmailHandler(res http.ResponseWriter, req *http.Request) {
   }
 
   if _, err := db.GetUser(bson.M{"email": email}); err == mgo.ErrNotFound {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", false})
+    WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", map[string]interface{}{
+      "taken": false,
+    }})
     return
   } else if err != nil {
     WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
     return
   }
 
-  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "", true})
+  WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "", map[string]interface{}{
+    "taken": true,
+  }})
 }
 
 func socketHandler(res http.ResponseWriter, req *http.Request) {
