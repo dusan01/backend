@@ -40,6 +40,7 @@ func Attach(router *pat.Router) {
   router.Post("/signup/social", signupSocialHandler)
   router.Post("/signup", signupHanlder)
   router.Post("/login", loginHanlder)
+  router.Get("/logout", logoutHandler)
   router.Get("/taken/username/{username}", takenUsernameHandler)
   router.Get("/taken/email/{email}", takenEmailHandler)
   router.Get("/socket", socketHandler)
@@ -298,6 +299,20 @@ func loginHanlder(res http.ResponseWriter, req *http.Request) {
   })
 
   WriteResponse(res, Response{enums.RESPONSE_CODES.OK, "", user.Struct()})
+}
+
+func logoutHandler(res http.ResponseWriter, req *http.Request) {
+  http.SetCookie(res, &http.Cookie{
+    Name:     "auth",
+    Value:    "",
+    Path:     "/",
+    Domain:   ".turn.fm",
+    Expires:  time.Now(),
+    Secure:   false,
+    HttpOnly: false,
+  })
+
+  http.Redirect(res, req, "/", "301")
 }
 
 func takenUsernameHandler(res http.ResponseWriter, req *http.Request) {
