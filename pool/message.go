@@ -14,7 +14,7 @@ type Sender interface {
 
 type Action struct {
   Id     string      `json:"i"`
-  Status int         `json:"status"`
+  Status int         `json:"s"`
   Action string      `json:"a"`
   Data   interface{} `json:"d"`
 }
