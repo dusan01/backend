@@ -13,13 +13,13 @@ type Sender interface {
 }
 
 type Action struct {
-  Id     int         `json:"i"`
+  Id     string      `json:"i"`
   Status int         `json:"status"`
   Action string      `json:"a"`
   Data   interface{} `json:"d"`
 }
 
-func NewAction(id, status int, action string, data interface{}) Action {
+func NewAction(id string, status int, action string, data interface{}) Action {
   return Action{id, status, action, data}
 }
 

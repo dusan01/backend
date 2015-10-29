@@ -54,7 +54,7 @@ func (s *Server) Send(data []byte) {
 
 func (s *Server) Receive(msg []byte) {
   var r struct {
-    Id     int             `json:"i"`
+    Id     string          `json:"i"`
     Action string          `json:"a"`
     Data   json.RawMessage `json:"d"`
   }
@@ -71,11 +71,13 @@ func (s *Server) Receive(msg []byte) {
     }
 
     if err := json.Unmarshal(r.Data, &data); err != nil {
+      go debug.Log("[pool > server.Recieve] Failed to unmarshal json: [%s]", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(s)
       return
     }
 
     _, err := db.GetSession(bson.M{"cookie": data.Auth})
+    go debug.Log("[pool > server.Receive] Cookie exists: [%t]", err == nil)
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, map[string]interface{}{
       "ok": err == nil,
     }).Dispatch(s)

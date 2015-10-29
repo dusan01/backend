@@ -119,7 +119,7 @@ func (c *Client) Send(data []byte) {
 
 func (c *Client) Receive(msg []byte) {
   var r struct {
-    Id     int             `json:"i"`
+    Id     string          `json:"i"`
     Action string          `json:"a"`
     Data   json.RawMessage `json:"d"`
   }
