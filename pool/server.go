@@ -23,7 +23,7 @@ func NewServer(conn *websocket.Conn) {
     Conn: conn,
   }
 
-  server.Send([]byte(`{'__auth': true}`))
+  server.Send([]byte(`{"__auth": true}`))
   go server.Listen()
   go debug.Log("[pool > NewServer] Successfully connected internal server")
 }
