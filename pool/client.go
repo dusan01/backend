@@ -100,7 +100,7 @@ func (c *Client) Terminate() {
 func (c *Client) Listen() {
   defer c.Terminate()
   for {
-    if _, msg, err := c.Conn.ReadMessage(); err != nil {
+    if _, msg, err := c.Conn.ReadMessage(); err == nil {
       go c.Receive(msg)
     } else {
       return
