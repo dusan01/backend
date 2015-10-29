@@ -43,7 +43,7 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
   if _, msg, err := conn.ReadMessage(); err == nil {
     var data struct {
       Hello  bool   `json:"hello"`
-      Server string `json:"---conn_294857"`
+      Server string `json:"frontend-auth"`
     }
 
     if err := json.Unmarshal(msg, &data); err != nil {

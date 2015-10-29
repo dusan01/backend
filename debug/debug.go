@@ -3,6 +3,7 @@ package debug
 import (
   "fmt"
   "sync"
+  "time"
 )
 
 var mu sync.Mutex
@@ -14,5 +15,6 @@ func Log(format string, params ...interface{}) {
   }
   mu.Lock()
   defer mu.Unlock()
-  fmt.Printf(format+"\n", params...)
+  params = append([]interface{}{time.Now().Format(time.Kitchen)}, params...)
+  fmt.Printf("[%s] "+format+"\n", params...)
 }

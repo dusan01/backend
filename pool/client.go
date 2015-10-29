@@ -65,7 +65,7 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
         return
       }
     }
-  } else if err != mgo.ErrNotFound && err != nil {
+  } else if err != mgo.ErrNotFound {
     go debug.Log("[pool > NewClient] Failed to retrieve global ban: [%s]", err.Error())
     conn.Close()
     return
@@ -100,16 +100,11 @@ func (c *Client) Terminate() {
 func (c *Client) Listen() {
   defer c.Terminate()
   for {
-    var (
-      msg []byte
-      err error
-    )
-
-    if _, msg, err = c.Conn.ReadMessage(); err != nil {
+    if _, msg, err := c.Conn.ReadMessage(); err != nil {
+      go c.Receive(msg)
+    } else {
       return
     }
-
-    go c.Receive(msg)
   }
 }
 
@@ -325,7 +320,7 @@ func (c *Client) Receive(msg []byte) {
           return
         }
       }
-    } else if err != mgo.ErrNotFound && err != nil {
+    } else if err != mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
@@ -617,7 +612,7 @@ func (c *Client) Receive(msg []byte) {
           return
         }
       }
-    } else if err != mgo.ErrNotFound && err != nil {
+    } else if err != mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
@@ -1038,7 +1033,7 @@ func (c *Client) Receive(msg []byte) {
         NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
         return
       }
-    } else if err != mgo.ErrNotFound && err != nil {
+    } else if err != mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
@@ -1320,7 +1315,7 @@ func (c *Client) Receive(msg []byte) {
         NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
         return
       }
-    } else if err != mgo.ErrNotFound && err != nil {
+    } else if err != mgo.ErrNotFound {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }

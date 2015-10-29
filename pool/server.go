@@ -18,7 +18,6 @@ type Server struct {
 }
 
 func NewServer(conn *websocket.Conn) {
-
   server := &Server{
     Conn: conn,
   }
@@ -35,16 +34,11 @@ func (s *Server) Terminate() {
 func (s *Server) Listen() {
   defer s.Terminate()
   for {
-    var (
-      msg []byte
-      err error
-    )
-
-    if _, msg, err = s.Conn.ReadMessage(); err != nil {
+    if _, msg, err := s.Conn.ReadMessage(); err == nil {
+      go s.Receive(msg)
+    } else {
       return
     }
-
-    go s.Receive(msg)
   }
 }
 
