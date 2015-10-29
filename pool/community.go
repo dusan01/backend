@@ -137,8 +137,10 @@ func (c *Community) Join(user *db.User) int {
   }
 
   // Should look into new solutions. It's likely that due to asynchronous nature, it
-  // will send the 'user.join' event to the client that has just jojned the
+  // will send the 'user.join' event to the client that has just joined the
   // community also
+  go debug.Log("[pool > community.Join]  User %s %s joined community %s %s",
+    user.Username, user.Id.String(), c.Community.Name, c.Community.Id.String())
   go c.Emit(NewEvent("user.join", user.Struct()))
   c.Population = append(c.Population, user)
   return enums.RESPONSE_CODES.OK
@@ -154,6 +156,8 @@ func (c *Community) Leave(user *db.User) int {
       copy(c.Population[i:], c.Population[i+1:])
       c.Population[len(c.Population)-1] = nil
       c.Population = c.Population[:len(c.Population)-1]
+      go debug.Log("[pool > community.Leave] User %s %s left community %s (%s)",
+        user.Username, user.Id.String(), c.Community.Name, c.Community.Id.String())
       go c.Emit(NewEvent("user.leave", user.Struct()))
       return enums.RESPONSE_CODES.OK
     }

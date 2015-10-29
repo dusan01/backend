@@ -18,12 +18,11 @@ type Server struct {
 }
 
 func NewServer(conn *websocket.Conn) {
-
   server := &Server{
     Conn: conn,
   }
 
-  server.Send([]byte(`{'__auth': true}`))
+  server.Send([]byte(`{"__auth": true}`))
   go server.Listen()
   go debug.Log("[pool > NewServer] Successfully connected internal server")
 }
@@ -35,16 +34,11 @@ func (s *Server) Terminate() {
 func (s *Server) Listen() {
   defer s.Terminate()
   for {
-    var (
-      msg []byte
-      err error
-    )
-
-    if _, msg, err = s.Conn.ReadMessage(); err != nil {
+    if _, msg, err := s.Conn.ReadMessage(); err == nil {
+      go s.Receive(msg)
+    } else {
       return
     }
-
-    go s.Receive(msg)
   }
 }
 
