@@ -312,7 +312,7 @@ func logoutHandler(res http.ResponseWriter, req *http.Request) {
     HttpOnly: false,
   })
 
-  http.Redirect(res, req, "/", "301")
+  http.Redirect(res, req, "/", 301)
 }
 
 func takenUsernameHandler(res http.ResponseWriter, req *http.Request) {
