@@ -5,6 +5,7 @@ import (
   "hybris/db"
   "hybris/debug"
   "hybris/enums"
+  "hybris/search"
   "hybris/structs"
   "sync"
   "time"
@@ -36,9 +37,17 @@ func NewCommunity(community *db.Community) *Community {
     Timer:      time.NewTimer(0),
   }
 
+  search.UpsertCommunity(community)
   Communities[community.Id] = c
 
   return c
+}
+
+func GetCommunity(id bson.ObjectId) *Community {
+  if v, ok := Communities[id]; ok {
+    return v
+  }
+  return nil
 }
 
 func (c *Community) GetState() structs.CommunityState {

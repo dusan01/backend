@@ -1,4 +1,4 @@
-package searcher
+package search
 
 import (
   "code.google.com/p/google-api-go-client/googleapi/transport"
@@ -21,7 +21,7 @@ func init() {
   }
 }
 
-func SearchYoutube(query string) ([]structs.SearchResult, error) {
+func Youtube(query string) ([]structs.SearchResult, error) {
   results := []structs.SearchResult{}
   searchCall := ytService.Search.List("id,snippet").
     Q(query).

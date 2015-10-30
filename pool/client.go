@@ -8,7 +8,7 @@ import (
   "hybris/db"
   "hybris/debug"
   "hybris/enums"
-  "hybris/searcher"
+  "hybris/search"
   "hybris/structs"
   "net/http"
   "sync"
@@ -125,6 +125,7 @@ func (c *Client) Receive(msg []byte) {
   }
 
   if err := json.Unmarshal(msg, &r); err != nil {
+    go debug.Log("[pool > client.Receive] Client sent bad data")
     return
   }
 
@@ -247,16 +248,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     chat, err := db.GetChat(bson.M{"_id": data.Id})
     if err == mgo.ErrNotFound {
@@ -299,18 +291,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
+    community := GetCommunity(c.Community)
 
-    community := NewCommunity(communityData)
-
-    if mute, err := db.GetMute(bson.M{"muteeId": c.U.Id, "communityId": communityData.Id}); err == nil {
+    if mute, err := db.GetMute(bson.M{"muteeId": c.U.Id, "communityId": community.Community.Id}); err == nil {
       if mute.Until == nil || mute.Until.After(time.Now()) {
         NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
         return
@@ -325,7 +308,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    chat := db.NewChat(c.U.Id, communityData.Id, data.Me, data.Message)
+    chat := db.NewChat(c.U.Id, community.Community.Id, data.Me, data.Message)
     if err := chat.Save(); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
@@ -376,6 +359,8 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
+    _ = NewCommunity(community)
+
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, community.Struct()).Dispatch(c)
   case "community.edit":
     var data struct {
@@ -405,7 +390,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    community := NewCommunity(communityData)
+    community := GetCommunity(communityData.Id)
 
     // Check the user owns this community
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.HOST) {
@@ -419,11 +404,11 @@ func (c *Client) Receive(msg []byte) {
         NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
         return
       }
-      communityData.Name = name
+      community.Community.Name = name
     }
 
     if data.Nsfw != nil {
-      communityData.Nsfw = *data.Nsfw
+      community.Community.Nsfw = *data.Nsfw
     }
 
     if data.Description != nil {
@@ -432,7 +417,7 @@ func (c *Client) Receive(msg []byte) {
         NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
         return
       }
-      communityData.Description = description
+      community.Community.Description = description
     }
 
     if data.WelcomeMessage != nil {
@@ -441,24 +426,24 @@ func (c *Client) Receive(msg []byte) {
         NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
         return
       }
-      communityData.WelcomeMessage = welcomeMessage
+      community.Community.WelcomeMessage = welcomeMessage
     }
 
     if data.WaitlistEnabled != nil {
-      communityData.WaitlistEnabled = *data.WaitlistEnabled
+      community.Community.WaitlistEnabled = *data.WaitlistEnabled
     }
 
     if data.DjRecycling != nil {
-      communityData.DjRecycling = *data.DjRecycling
+      community.Community.DjRecycling = *data.DjRecycling
     }
 
     // Save community
-    if err := communityData.Save(); err != nil {
+    if err := community.Community.Save(); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, communityData.Struct()).Dispatch(c)
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, community.Community.Struct()).Dispatch(c)
   case "community.getHistory":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -478,7 +463,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    history, err := communityData.GetHistory(50)
+    community := GetCommunity(communityData.Id)
+
+    history, err := community.Community.GetHistory(50)
     if err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
@@ -504,7 +491,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, communityData.Struct()).Dispatch(c)
+    community := GetCommunity(communityData.Id)
+
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, community.Community.Struct()).Dispatch(c)
   case "community.getStaff":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -524,7 +513,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    staff, err := communityData.GetStaff()
+    community := GetCommunity(communityData.Id)
+
+    staff, err := community.Community.GetStaff()
     if err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
@@ -550,7 +541,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    community := NewCommunity(communityData)
+    community := GetCommunity(communityData.Id)
     state := community.GetState()
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, state).Dispatch(c)
@@ -573,7 +564,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    community := NewCommunity(communityData)
+    community := GetCommunity(communityData.Id)
     population := community.Population
     users := []bson.ObjectId{}
     for _, u := range population {
@@ -602,6 +593,8 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
+    community := GetCommunity(communityData.Id)
+
     if ban, err := db.GetBan(bson.M{"banneeId": c.U.Id, "communityId": communityData.Id}); err == nil {
       if ban.Until == nil || ban.Until.After(time.Now()) {
         NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -617,14 +610,26 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    community := NewCommunity(communityData)
     if user := community.GetUser(c.U.Id); user == nil {
       if currentCommunity, ok := Communities[c.Community]; ok {
         _ = currentCommunity.Leave(c.U)
       }
     }
-    c.Community = communityData.Id
+    c.Community = community.Community.Id
     NewAction(r.Id, community.Join(c.U), r.Action, bson.M{"id": community.Community.Id}).Dispatch(c)
+  case "community.search":
+    var data struct {
+      Query string `json:"query"`
+    }
+
+    if err := json.Unmarshal(r.Data, &data); err != nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    results := search.Communities(data.Query)
+
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, results).Dispatch(c)
   case "community.taken":
     var data struct {
       Url string `json:"url"`
@@ -664,47 +669,21 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     NewAction(r.Id, community.JoinWaitlist(c.U), r.Action, nil).Dispatch(c)
   case "dj.leave":
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
     NewAction(r.Id, community.LeaveWaitlist(c.U), r.Action, nil).Dispatch(c)
   case "dj.skip":
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
+    community := GetCommunity(c.Community)
 
-    community := NewCommunity(communityData)
     if community.Media != nil && community.Media.DjId == c.U.Id {
       community.Advance()
       NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
@@ -919,9 +898,9 @@ func (c *Client) Receive(msg []byte) {
 
     switch data.Type {
     case 0:
-      results, err = searcher.SearchYoutube(data.Query)
+      results, err = search.Youtube(data.Query)
     case 1:
-      results, err = searcher.SearchSoundcloud(data.Query)
+      results, err = search.Soundcloud(data.Query)
     default:
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -949,16 +928,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -1001,16 +971,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     role := enums.MODERATION_ROLES.BOUNCER
     if data.Length > 86400 {
@@ -1028,7 +989,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if ban, err := db.GetBan(bson.M{"banneeId": client.U.Id, "communityId": communityData.Id}); err == nil {
+    if ban, err := db.GetBan(bson.M{"banneeId": client.U.Id, "communityId": community.Community.Id}); err == nil {
       if err := ban.Delete(); err != nil {
         NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
         return
@@ -1044,9 +1005,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    cs, err := db.GetCommunityStaff(bson.M{"communityId": communityData.Id, "userId": client.U.Id})
+    cs, err := db.GetCommunityStaff(bson.M{"communityId": community.Community.Id, "userId": client.U.Id})
     if err == mgo.ErrNotFound {
-      cs = db.NewCommunityStaff(communityData.Id, client.U.Id, 0)
+      cs = db.NewCommunityStaff(community.Community.Id, client.U.Id, 0)
     } else if err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
@@ -1058,7 +1019,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     until := time.Now().Add(data.Length * time.Second)
-    ban := db.NewBan(client.U.Id, c.U.Id, communityData.Id, data.Reason, &until)
+    ban := db.NewBan(client.U.Id, c.U.Id, community.Community.Id, data.Reason, &until)
 
     if err := ban.Save(); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
@@ -1082,16 +1043,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.MANAGER) {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -1114,16 +1066,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -1154,16 +1097,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -1186,16 +1120,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -1239,16 +1164,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.MANAGER) {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -1283,16 +1199,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     role := enums.MODERATION_ROLES.BOUNCER
     if data.Length > 86400 {
@@ -1310,7 +1217,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if ban, err := db.GetMute(bson.M{"muteeId": client.U.Id, "communityId": communityData.Id}); err == nil {
+    if ban, err := db.GetMute(bson.M{"muteeId": client.U.Id, "communityId": community.Community.Id}); err == nil {
       if err := ban.Delete(); err != nil {
         NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
         return
@@ -1326,9 +1233,9 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    cs, err := db.GetCommunityStaff(bson.M{"communityId": communityData.Id, "userId": client.U.Id})
+    cs, err := db.GetCommunityStaff(bson.M{"communityId": community.Community.Id, "userId": client.U.Id})
     if err == mgo.ErrNotFound {
-      cs = db.NewCommunityStaff(communityData.Id, client.U.Id, 0)
+      cs = db.NewCommunityStaff(community.Community.Id, client.U.Id, 0)
     } else if err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
@@ -1340,7 +1247,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     until := time.Now().Add(data.Length * time.Second)
-    ban := db.NewMute(client.U.Id, c.U.Id, communityData.Id, data.Reason, &until)
+    ban := db.NewMute(client.U.Id, c.U.Id, community.Community.Id, data.Reason, &until)
 
     if err := ban.Save(); err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
@@ -1373,16 +1280,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     if !community.HasPermission(c.U, enums.MODERATION_ROLES.BOUNCER) {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
@@ -1419,16 +1317,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
 
     community.Lock()
     defer community.Unlock()
@@ -1452,7 +1341,7 @@ func (c *Client) Receive(msg []byte) {
 
     cs, err := db.GetCommunityStaff(bson.M{"communityId": c.Community, "userId": data.UserId})
     if err == mgo.ErrNotFound {
-      cs = db.NewCommunityStaff(communityData.Id, user.Id, data.Role)
+      cs = db.NewCommunityStaff(community.Community.Id, user.Id, data.Role)
     } else if err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
@@ -1805,16 +1694,8 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
+    community := GetCommunity(c.Community)
 
-    community := NewCommunity(communityData)
     if community.History != nil && community.History.PlaylistItemId == data.PlaylistItemId {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -1981,16 +1862,8 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
+    community := GetCommunity(c.Community)
 
-    community := NewCommunity(communityData)
     if community.Media != nil && community.Media.DjId == c.U.Id {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -2001,16 +1874,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
     if community.Media != nil && community.Media.DjId == c.U.Id {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
@@ -2030,16 +1894,7 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communityData, err := db.GetCommunity(bson.M{"_id": c.Community})
-    if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    } else if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
-      return
-    }
-
-    community := NewCommunity(communityData)
+    community := GetCommunity(c.Community)
     if community.Media != nil && community.Media.DjId == c.U.Id {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return

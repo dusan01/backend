@@ -1,4 +1,4 @@
-package searcher
+package search
 
 import (
   "encoding/json"
@@ -9,7 +9,7 @@ import (
   "strings"
 )
 
-func SearchSoundcloud(query string) ([]structs.SearchResult, error) {
+func Soundcloud(query string) ([]structs.SearchResult, error) {
   results := []structs.SearchResult{}
   var out []struct {
     Image string `json:"artwork_url"`

@@ -102,7 +102,7 @@ func (u User) Save() error {
 
 func (u User) GetCommunities() ([]Community, error) {
   var communities []Community
-  err := DB.C("communities").Find(bson.M{"host": u.Id}).Iter().All(&communities)
+  err := DB.C("communities").Find(bson.M{"host": u.Id}).Sort("-$natural").Iter().All(&communities)
   return communities, err
 }
 
@@ -112,7 +112,7 @@ func (u User) GetActivePlaylist() (*Playlist, error) {
 
 func (u User) GetPlaylists() ([]Playlist, error) {
   var playlists []Playlist
-  err := DB.C("playlists").Find(bson.M{"ownerId": u.Id}).Iter().All(&playlists)
+  err := DB.C("playlists").Find(bson.M{"ownerId": u.Id}).Sort("-$natural").Iter().All(&playlists)
   return u.sortPlaylists(playlists), err
 }
 
