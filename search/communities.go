@@ -3,10 +3,12 @@ package search
 import (
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
+  "hybris/debug"
   "regexp"
-  "sort"
+  //"sort"
   "strings"
   "sync"
+  "time"
 )
 
 type Community struct {
@@ -16,6 +18,11 @@ type Community struct {
   FormatHost        string `json:"-"`
   FormatName        string `json:"-"`
   FormatDescription string `json:"-"`
+}
+
+type Result struct {
+  Community Community
+  Ranking   int
 }
 
 var communities = map[bson.ObjectId]Community{}
@@ -36,12 +43,12 @@ func UpsertCommunity(community *db.Community, population int) error {
   return nil
 }
 
-func Communities(query string, sbp bool) []Community {
+func Communities(query string, sbp bool) []Result {
   query = strings.ToLower(query)
   query = regexp.MustCompile(" +").ReplaceAllString(removeSymbols(strings.ToLower(strings.TrimSpace(query))), " ")
 
   if len(query) < 1 {
-    return []Community{}
+    return []Result{}
   }
 
   queries := removeDuplicateQueries(strings.Split(query, " "))
@@ -50,12 +57,14 @@ func Communities(query string, sbp bool) []Community {
   return matches
 }
 
-func Match(queries []string, sbp bool) []Community {
-  results := make(map[int][]Community)
+func Match(queries []string, sbp bool) []Result {
+  // results := make(map[int][]Community)
+  results := []Result{}
 
   var wg sync.WaitGroup
   var mutex sync.Mutex
 
+  s := time.Now()
   for _, community := range communities {
     wg.Add(1)
     go func(community Community) {
@@ -72,11 +81,14 @@ func Match(queries []string, sbp bool) []Community {
       }
       if total > 0 && total >= len(queries)-1 {
         mutex.Lock()
-        results[total] = append(results[total], community)
+        // results[total] = append(results[total], community)
+        results = append(results, Result{community, total})
         mutex.Unlock()
       }
     }(community)
   }
+
+  go debug.Log("Took %s to iterate through communities", time.Since(s))
 
   wg.Wait()
 
@@ -87,38 +99,60 @@ func Match(queries []string, sbp bool) []Community {
   return relevanceSortResults(results)
 }
 
-func populationSortResults(results map[int][]Community) []Community {
-  r := []Community{}
-  for _, c := range results {
-    for _, v := range c {
-      r = append(r, v)
-    }
+func populationSortResults(results []Result) []Result {
+  // Shell Sort
+  h := 1
+  for h < len(results) {
+    h = 3*h + 1
   }
-  for i := 1; i < len(r); i++ {
-    v := r[i]
-    j := i - 1
-    for j >= 0 && r[j].Population <= v.Population {
-      r[j+1] = r[j]
-      j = j - 1
+  for h >= 1 {
+    for i := h; i < len(results); i++ {
+      for j := i; j >= h && results[j].Community.Population < results[j-h].Community.Population; j = j - h {
+        results[j], results[j-1] = results[j-1], results[j]
+      }
     }
-    r[j+1] = v
+    h = h / 3
   }
-  return r
+
+  // Bubble Sort
+  // for i := 1; i < len(r); i++ {
+  //   v := r[i]
+  //   j := i - 1
+  //   for j >= 0 && r[j].Population <= v.Population {
+  //     r[j+1] = r[j]
+  //     j = j - 1
+  //   }
+  //   r[j+1] = v
+  // }
+  return results
 }
 
-func relevanceSortResults(results map[int][]Community) []Community {
-  matches := make([]int, 0)
-  for match, _ := range results {
-    matches = append(matches, match)
+func relevanceSortResults(results []Result) []Result {
+  h := 1
+  for h < len(results) {
+    h = 3*h + 1
   }
-  sort.Sort(sort.Reverse(sort.IntSlice(matches))) // Sorts the slice from 0..
-  payload := []Community{}
-  for _, match := range matches {
-    for _, item := range results[match] {
-      payload = append(payload, item)
+  for h >= 1 {
+    for i := h; i < len(results); i++ {
+      for j := i; j >= h && results[j].Ranking < results[j-h].Ranking; j = j - h {
+        results[j], results[j-1] = results[j-1], results[j]
+      }
     }
+    h = h / 3
   }
-  return payload
+  return results
+  // matches := make([]int, 0)
+  // for match, _ := range results {
+  //   matches = append(matches, match)
+  // }
+  // sort.Sort(sort.Reverse(sort.IntSlice(matches))) // Sorts the slice from 0..
+  // payload := []Community{}
+  // for _, match := range matches {
+  //   for _, item := range results[match] {
+  //     payload = append(payload, item)
+  //   }
+  // }
+  // return payload
 }
 
 func removeDuplicateQueries(queries []string) []string {

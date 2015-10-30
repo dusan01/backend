@@ -50,6 +50,29 @@ func GetCommunity(id bson.ObjectId) *Community {
   return nil
 }
 
+func (c *Community) GetLandingInfo() structs.LandingCommunityListing {
+  host, err := db.GetUser(bson.M{"_id": c.Community.HostId})
+  if err != nil {
+    return structs.LandingCommunityListing{}
+  }
+
+  media := structs.CommunityPlayingInfo{}
+  dj := structs.UserInfo{}
+  if c.Media != nil {
+    media = *c.Media
+
+    if u := c.GetUser(c.Media.DjId); u != nil {
+      dj = u.Struct()
+    }
+  }
+
+  return structs.LandingCommunityListing{
+    Population: len(c.Population),
+    Playing:    structs.CommunityFullPlayingInfo{media, dj},
+    Info:       structs.CommunityFullInfo{c.Community.Struct(), host.Struct()},
+  }
+}
+
 func (c *Community) GetState() structs.CommunityState {
   return structs.CommunityState{
     Waitlist:   c.Waitlist,
@@ -326,14 +349,12 @@ func (c *Community) LeaveWaitlist(user *db.User) int {
 // }
 
 func (c *Community) GetUser(userId bson.ObjectId) *db.User {
-  var u *db.User = nil
   for _, v := range c.Population {
     if v.Id == userId {
-      u = v
-      break
+      return v
     }
   }
-  return u
+  return nil
 }
 
 func (c *Community) HasPermission(user *db.User, required int) bool {

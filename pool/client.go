@@ -337,8 +337,8 @@ func (c *Client) Receive(msg []byte) {
     c.Lock()
     defer c.Unlock()
 
-    communities, err := c.U.GetCommunities()
-    if err != nil || len(communities) >= 3 {
+    _, err := c.U.GetCommunities()
+    if err != nil /* || len(communities) >= 3 */ {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
@@ -632,10 +632,28 @@ func (c *Client) Receive(msg []byte) {
 
     s := time.Now()
     results := search.Communities(data.Query, data.SortByPopulation)
+    results = results[:int(math.Min(50, float64(len(results))))]
     results = results[int(math.Min(float64(data.Offset), float64(len(results)))):]
     go debug.Log("[pool > client.Receive] Took %s to search communities for %s", time.Since(s), data.Query)
 
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, results).Dispatch(c)
+    payload := make([]structs.LandingCommunityListing, len(results))
+    var wg sync.WaitGroup
+    var m sync.Mutex
+    for i, result := range results {
+      wg.Add(1)
+      go func(i int, result search.Result) {
+        defer wg.Done()
+        community := GetCommunity(result.Community.Id)
+        info := community.GetLandingInfo()
+        m.Lock()
+        defer m.Unlock()
+        payload[i] = info
+      }(i, result)
+    }
+
+    wg.Wait()
+
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, payload).Dispatch(c)
   case "community.taken":
     var data struct {
       Url string `json:"url"`

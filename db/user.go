@@ -143,7 +143,7 @@ func (u User) recalculatePlaylists(playlists []Playlist) []Playlist {
   return payload
 }
 
-func (u User) Struct() interface{} {
+func (u User) Struct() structs.UserInfo {
   return structs.UserInfo{
     Id:          u.Id,
     Username:    u.Username,
