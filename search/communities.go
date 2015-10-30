@@ -58,7 +58,6 @@ func Communities(query string, sbp bool) []Result {
 }
 
 func Match(queries []string, sbp bool) []Result {
-  // results := make(map[int][]Community)
   results := []Result{}
 
   var wg sync.WaitGroup
@@ -81,7 +80,6 @@ func Match(queries []string, sbp bool) []Result {
       }
       if total > 0 && total >= len(queries)-1 {
         mutex.Lock()
-        // results[total] = append(results[total], community)
         results = append(results, Result{community, total})
         mutex.Unlock()
       }
@@ -100,7 +98,6 @@ func Match(queries []string, sbp bool) []Result {
 }
 
 func populationSortResults(results []Result) []Result {
-  // Shell Sort
   h := 1
   for h < len(results) {
     h = 3*h + 1
@@ -113,17 +110,6 @@ func populationSortResults(results []Result) []Result {
     }
     h = h / 3
   }
-
-  // Bubble Sort
-  // for i := 1; i < len(r); i++ {
-  //   v := r[i]
-  //   j := i - 1
-  //   for j >= 0 && r[j].Population <= v.Population {
-  //     r[j+1] = r[j]
-  //     j = j - 1
-  //   }
-  //   r[j+1] = v
-  // }
   return results
 }
 
@@ -141,18 +127,6 @@ func relevanceSortResults(results []Result) []Result {
     h = h / 3
   }
   return results
-  // matches := make([]int, 0)
-  // for match, _ := range results {
-  //   matches = append(matches, match)
-  // }
-  // sort.Sort(sort.Reverse(sort.IntSlice(matches))) // Sorts the slice from 0..
-  // payload := []Community{}
-  // for _, match := range matches {
-  //   for _, item := range results[match] {
-  //     payload = append(payload, item)
-  //   }
-  // }
-  // return payload
 }
 
 func removeDuplicateQueries(queries []string) []string {
