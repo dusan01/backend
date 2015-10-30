@@ -10,6 +10,7 @@ import (
   "hybris/enums"
   "hybris/search"
   "hybris/structs"
+  "math"
   "net/http"
   "sync"
   "time"
@@ -619,7 +620,9 @@ func (c *Client) Receive(msg []byte) {
     NewAction(r.Id, community.Join(c.U), r.Action, bson.M{"id": community.Community.Id}).Dispatch(c)
   case "community.search":
     var data struct {
-      Query string `json:"query"`
+      Query            string `json:"query"`
+      Offset           int    `json:"offset"`
+      SortByPopulation bool   `json:"sortByPop"`
     }
 
     if err := json.Unmarshal(r.Data, &data); err != nil {
@@ -627,7 +630,8 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    results := search.Communities(data.Query)
+    results := search.Communities(data.Query, data.SortByPopulation)
+    results = results[int(math.Min(float64(data.Offset), float64(len(results)-1))):]
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, results).Dispatch(c)
   case "community.taken":

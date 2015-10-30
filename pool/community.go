@@ -37,7 +37,7 @@ func NewCommunity(community *db.Community) *Community {
     Timer:      time.NewTimer(0),
   }
 
-  search.UpsertCommunity(community)
+  search.UpsertCommunity(community, 0)
   Communities[community.Id] = c
 
   return c
@@ -152,6 +152,7 @@ func (c *Community) Join(user *db.User) int {
     user.Username, user.Id.String(), c.Community.Name, c.Community.Id.String())
   go c.Emit(NewEvent("user.join", user.Struct()))
   c.Population = append(c.Population, user)
+  search.UpsertCommunity(c.Community, len(c.Population))
   return enums.RESPONSE_CODES.OK
 }
 
@@ -165,6 +166,7 @@ func (c *Community) Leave(user *db.User) int {
       copy(c.Population[i:], c.Population[i+1:])
       c.Population[len(c.Population)-1] = nil
       c.Population = c.Population[:len(c.Population)-1]
+      search.UpsertCommunity(c.Community, len(c.Population))
       go debug.Log("[pool > community.Leave] User %s %s left community %s (%s)",
         user.Username, user.Id.String(), c.Community.Name, c.Community.Id.String())
       go c.Emit(NewEvent("user.leave", user.Struct()))

@@ -12,6 +12,7 @@ import (
 type Community struct {
   *db.Community
   Host              string `json:"host"`
+  Population        int    `json:"population"`
   FormatHost        string `json:"-"`
   FormatName        string `json:"-"`
   FormatDescription string `json:"-"`
@@ -19,7 +20,7 @@ type Community struct {
 
 var communities = map[bson.ObjectId]Community{}
 
-func UpsertCommunity(community *db.Community) error {
+func UpsertCommunity(community *db.Community, population int) error {
   user, err := db.GetUser(bson.M{"_id": community.HostId})
   if err != nil {
     return err
@@ -27,6 +28,7 @@ func UpsertCommunity(community *db.Community) error {
   communities[community.Id] = Community{
     community,
     user.DisplayName,
+    population,
     strings.ToLower(removeSymbols(user.DisplayName)),
     strings.ToLower(removeSymbols(community.Name)),
     strings.ToLower(removeSymbols(community.Description)),
@@ -34,7 +36,7 @@ func UpsertCommunity(community *db.Community) error {
   return nil
 }
 
-func Communities(query string) []Community {
+func Communities(query string, sbp bool) []Community {
   query = strings.ToLower(query)
   query = regexp.MustCompile(" +").ReplaceAllString(removeSymbols(strings.ToLower(strings.TrimSpace(query))), " ")
 
@@ -43,12 +45,12 @@ func Communities(query string) []Community {
   }
 
   queries := removeDuplicateQueries(strings.Split(query, " "))
-  matches := Match(queries)
+  matches := Match(queries, sbp)
 
   return matches
 }
 
-func Match(queries []string) []Community {
+func Match(queries []string, sbp bool) []Community {
   results := make(map[int][]Community)
 
   var wg sync.WaitGroup
@@ -78,7 +80,30 @@ func Match(queries []string) []Community {
 
   wg.Wait()
 
+  if sbp {
+    return populationSortResults(results)
+  }
+
   return relevanceSortResults(results)
+}
+
+func populationSortResults(results map[int][]Community) []Community {
+  r := []Community{}
+  for _, c := range results {
+    for _, v := range c {
+      r = append(r, v)
+    }
+  }
+  for i := 1; i < len(r); i++ {
+    v := r[i]
+    j := i - 1
+    for j >= 0 && r[j].Population <= v.Population {
+      r[j+1] = r[j]
+      j = j - 1
+    }
+    r[j+1] = v
+  }
+  return r
 }
 
 func relevanceSortResults(results map[int][]Community) []Community {
