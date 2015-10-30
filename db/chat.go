@@ -33,7 +33,7 @@ type Chat struct {
   // Deleter Id
   // The person who deleted the message
   // See /db/user/id
-  DeleterId bson.ObjectId `json:"deleterId" bson:"deleterId"`
+  DeleterId bson.ObjectId `json:"deleterId" bson:"deleterId,omitempty"`
 
   // The date this objects was created
   Created time.Time `json:"created" bson:"created"`

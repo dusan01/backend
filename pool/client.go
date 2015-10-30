@@ -293,6 +293,10 @@ func (c *Client) Receive(msg []byte) {
     }
 
     community := GetCommunity(c.Community)
+    if community == nil {
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
 
     if mute, err := db.GetMute(bson.M{"muteeId": c.U.Id, "communityId": community.Community.Id}); err == nil {
       if mute.Until == nil || mute.Until.After(time.Now()) {
@@ -300,17 +304,20 @@ func (c *Client) Receive(msg []byte) {
         return
       } else {
         if err := mute.Delete(); err != nil {
+          go debug.Log("Failed to delete mute: [%s]", err.Error())
           NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
           return
         }
       }
     } else if err != mgo.ErrNotFound {
+      go debug.Log("Failed to retrieve mute from db: [%s]", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     chat := db.NewChat(c.U.Id, community.Community.Id, data.Me, data.Message)
     if err := chat.Save(); err != nil {
+      go debug.Log("[pool > client.Receive] Failed to save chat message: [%s]", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
