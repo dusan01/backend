@@ -630,8 +630,10 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
+    s := time.Now()
     results := search.Communities(data.Query, data.SortByPopulation)
     results = results[int(math.Min(float64(data.Offset), float64(len(results)))):]
+    go debug.Log("[pool > client.Receive] Took %s to search communities for %s", time.Since(s), data.Query)
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, results).Dispatch(c)
   case "community.taken":
