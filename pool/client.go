@@ -586,7 +586,7 @@ func (c *Client) Receive(msg []byte) {
 
     communityData, err := db.GetCommunity(bson.M{"url": data.Url})
     if err == mgo.ErrNotFound {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      NewAction(r.Id, enums.RESPONSE_CODES.NOT_FOUND, r.Action, nil).Dispatch(c)
       return
     } else if err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
