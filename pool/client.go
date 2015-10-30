@@ -631,7 +631,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     results := search.Communities(data.Query, data.SortByPopulation)
-    results = results[int(math.Min(float64(data.Offset), float64(len(results)-1))):]
+    results = results[int(math.Min(float64(data.Offset), float64(len(results)))):]
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, results).Dispatch(c)
   case "community.taken":
