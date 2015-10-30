@@ -338,7 +338,7 @@ func (c *Client) Receive(msg []byte) {
     defer c.Unlock()
 
     _, err := c.U.GetCommunities()
-    if err != nil /* || len(communities) >= 3 */ {
+    if err != nil || len(communities) >= 3 {
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
