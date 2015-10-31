@@ -15,6 +15,7 @@ import (
   "html/template"
   "hybris/atlas"
   "hybris/db"
+  "hybris/debug"
   "hybris/enums"
   "hybris/socket"
   "hybris/validation"
@@ -124,6 +125,7 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
 
   info, err := gothic.CompleteUserAuth(res, req)
   if err != nil {
+    go debug.Log("[routes -> /auth] Failed to complete user auth: [%s]", err.Error())
     failed = true
     writeSocialWindowResponse(res, token, provider, loggedIn, failed)
     return
@@ -137,12 +139,14 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
   if user, err := db.GetUser(query); err == nil {
     session, err := db.NewSession(user.Id)
     if err != nil {
+      go debug.Log("[routes -> /auth] Failed to create session: [%s]", err.Error())
       failed = true
       writeSocialWindowResponse(res, token, provider, loggedIn, failed)
       return
     }
 
     if err := session.Save(); err != nil {
+      go debug.Log("[routes -> /auth] Failed to save session: [%s]", err.Error())
       failed = true
       writeSocialWindowResponse(res, token, provider, loggedIn, failed)
       return
@@ -158,8 +162,11 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
       HttpOnly: false,
     })
     loggedIn = true
-  } else {
+  } else if err == mgo.ErrNotFound {
     token = atlas.NewToken(info.Provider, accessToken)
+  } else {
+    go debug.Log("[routes -> /auth] Failed to get user: [%s]", err.Error())
+    failed = true
   }
 
   writeSocialWindowResponse(res, token, provider, loggedIn, failed)
