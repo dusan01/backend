@@ -135,7 +135,7 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
   accessToken := info.AccessToken + info.AccessTokenSecret
 
   query := bson.M{}
-  query[info.Provider+"Token"] = accessToken
+  query[provider+"Token"] = accessToken
   if user, err := db.GetUser(query); err == nil {
     session, err := db.NewSession(user.Id)
     if err != nil {
@@ -163,6 +163,7 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
     })
     loggedIn = true
   } else if err == mgo.ErrNotFound {
+    go debug.Log("[routes -> /auth] Couldn't find user with access token: [%s]", accessToken)
     token = atlas.NewToken(info.Provider, accessToken)
   } else {
     go debug.Log("[routes -> /auth] Failed to get user: [%s]", err.Error())
