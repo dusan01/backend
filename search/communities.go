@@ -4,7 +4,6 @@ import (
   "gopkg.in/mgo.v2/bson"
   "hybris/db"
   "hybris/debug"
-  "math"
   "regexp"
   "strings"
   "sync"
@@ -44,7 +43,14 @@ func UpsertCommunity(community *db.Community, population int) error {
 }
 
 func Communities(query string, sbp bool) []Result {
-  query = query[:int(math.Min(float64(len(query)), 50))]
+  if len(query) <= 0 {
+    results := []Result{}
+    for _, c := range communities {
+      results = append(results, Result{c, 0})
+    }
+    return populationSortResults(results)
+  }
+
   query = strings.ToLower(query)
   query = regexp.MustCompile(" +").ReplaceAllString(removeSymbols(strings.ToLower(strings.TrimSpace(query))), " ")
 
