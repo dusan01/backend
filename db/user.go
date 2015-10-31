@@ -44,10 +44,10 @@ type User struct {
   Points int `json:"points" bson:"points"`
 
   // Facebook user ID used for facebook logins
-  FacebookToken string `json:"facebookToken" bson:"facebookToken"`
+  FacebookId string `json:"facebookId" bson:"facebookId"`
 
   // Twitter user ID used for twitter logins
-  TwitterToken string `json:"twitterToken" bson:"twitterToken"`
+  TwitterId string `json:"twitterId" bson:"twitterId"`
 
   // A premium currency
   // Used to purchase fancy items and features

@@ -13,14 +13,14 @@ import (
 
 type Session struct {
   Provider string
-  Token    string
+  UserId   string
 }
 
 var sessions = map[string]Session{}
 
-func NewToken(provider, accessToken string) (token string) {
+func NewToken(provider, userId string) (token string) {
   for k, v := range sessions {
-    if v.Token == accessToken {
+    if v.UserId == userId {
       token = k
       return
     }
@@ -28,7 +28,7 @@ func NewToken(provider, accessToken string) (token string) {
   token = strings.Replace(uuid.NewUUID().String(), "-", "", -1)
   sessions[token] = Session{
     provider,
-    accessToken,
+    userId,
   }
   return
 }
@@ -42,9 +42,9 @@ func AddIntegration(user *db.User, token string) error {
 
   switch session.Provider {
   case "facebook":
-    user.FacebookToken = session.Token
+    user.FacebookId = session.UserId
   case "twitter":
-    user.TwitterToken = session.Token
+    user.TwitterId = session.UserId
   }
 
   delete(sessions, token)
