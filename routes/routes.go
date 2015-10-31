@@ -96,6 +96,7 @@ func writeSocialWindowResponse(res http.ResponseWriter, token, provider string, 
             failed: {{.Failed}}
           });
         }, 1);
+        window.close()
       </script>
     </body>
   </html>
