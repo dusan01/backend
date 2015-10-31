@@ -94,6 +94,7 @@ func writeSocialWindowResponse(res http.ResponseWriter, token, provider string, 
             loggedIn: {{.LoggedIn}},
             failed: {{.Failed}}
           });
+          window.close()
         }, 1);
       </script>
     </body>
