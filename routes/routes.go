@@ -128,7 +128,7 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
     <!doctype html>
     <html>
     <head>
-      <title>Callback</callbacl>
+      <title>Callback</title>
     </head>
     <body style="background: #1A2326;color: white;">
       <div style="position: absolute;top:50%;left:50%;transform: translate(-50%, -50%);">This window should close automatically.</div>
