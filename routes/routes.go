@@ -83,30 +83,26 @@ func indexHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func authHandler(res http.ResponseWriter, req *http.Request) {
+  accessToken, query, token, loggedIn, failed := "", bson.M{}, "", false, false
+
   info, err := gothic.CompleteUserAuth(res, req)
   if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
-    return
+    failed = true
+    goto writeSocial
   }
   // Find the user and log them in if they exist
-  accessToken := info.AccessToken + info.AccessTokenSecret
-
-  query := bson.M{}
+  accessToken = info.AccessToken + info.AccessTokenSecret
   query[info.Provider+"Token"] = accessToken
-
-  token := ""
-  loggedIn := false
-  user, err := db.GetUser(query)
-  if err == nil {
+  if user, err := db.GetUser(query); err == nil {
     session, err := db.NewSession(user.Id)
     if err != nil {
-      WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
-      return
+      failed = true
+      goto writeSocial
     }
 
     if err := session.Save(); err != nil {
-      WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
-      return
+      failed = true
+      goto writeSocial
     }
 
     http.SetCookie(res, &http.Cookie{
@@ -123,6 +119,7 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
     token = atlas.NewToken(info.Provider, accessToken)
   }
 
+writeSocial:
   res.Header().Set("Content-Type", "text/html; encoding=utf-8")
   res.Write([]byte(fmt.Sprintf(`
     <!doctype html>
@@ -130,20 +127,21 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
     <head>
       <title>Callback</title>
     </head>
-    <body style="background: #1A2326;color: white;">
-      <div style="position: absolute;top:50%;left:50%;transform: translate(-50%, -50%);">This window should close automatically.</div>
+    <body style="background: #1A2326;color: white; font-family: sans-serif;">
+      <div style="position: absolute;top:50%;left:50%; transform: translate(-50%, -50%);">This window should close automatically.</div>
       <script>
         window.opener.setTimeout(function() {
           window.opener.TURN_SOCIAL_CALLBACK({
             token: '%s',
             type: '%s',
-            loggedIn: %t
+            loggedIn: %t,
+            failed: %t
           });
         }, 1);
       </script>
     </body>
   </html>
-  `, token, info.Provider, loggedIn)))
+  `, token, info.Provider, loggedIn, failed)))
 }
 
 func signupSocialHandler(res http.ResponseWriter, req *http.Request) {
