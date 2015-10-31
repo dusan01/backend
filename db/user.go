@@ -154,3 +154,13 @@ func (u User) Struct() structs.UserInfo {
     Updated:     u.Updated,
   }
 }
+
+func (u User) PrivateStruct() structs.UserPrivateInfo {
+  return structs.UserPrivateInfo{
+    u.Struct(),
+    u.Diamonds,
+    u.Email,
+    u.FacebookId,
+    u.TwitterId,
+  }
+}

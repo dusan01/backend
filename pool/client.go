@@ -132,6 +132,11 @@ func (c *Client) Receive(msg []byte) {
 
   switch r.Action {
   /*
+     Misc
+  */
+  case "whoami":
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, c.U.PrivateStruct()).Dispatch(c)
+  /*
      Admin
   */
   case "adm.broadcast":
