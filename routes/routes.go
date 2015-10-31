@@ -2,6 +2,7 @@ package routes
 
 import (
   "encoding/json"
+  "fmt"
   "github.com/gorilla/pat"
   "github.com/gorilla/securecookie"
   "github.com/gorilla/sessions"
@@ -93,6 +94,8 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
   query := bson.M{}
   query[info.Provider+"Token"] = accessToken
 
+  token := ""
+  loggedIn := false
   user, err := db.GetUser(query)
   if err == nil {
     session, err := db.NewSession(user.Id)
@@ -115,12 +118,24 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
       Secure:   false,
       HttpOnly: false,
     })
-    http.Redirect(res, req, "/", 301)
-    return
+    loggedIn = true
+  } else {
+    token = atlas.NewToken(info.Provider, accessToken)
   }
 
-  token := atlas.NewToken(info.Provider, accessToken)
-  http.Redirect(res, req, "/signup/social?token="+url.QueryEscape(token), 301)
+  res.Header().Set("Content-Type", "text/html; encoding=utf-8")
+  res.Write([]byte(fmt.Sprintf(`
+    This window should close automatically.
+    <script>
+      window.opener.setTimeout(function() {
+        window.opener.TURN_SOCIAL_CALLBACK({
+          token: '%s',
+          type: '%s',
+          loggedIn: %t
+        });
+      }, 1);
+    </script>
+  `, token, info.Provider, loggedIn)))
 }
 
 func signupSocialHandler(res http.ResponseWriter, req *http.Request) {
