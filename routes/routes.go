@@ -2,7 +2,6 @@ package routes
 
 import (
   "encoding/json"
-  "fmt"
   "github.com/gorilla/pat"
   "github.com/gorilla/securecookie"
   "github.com/gorilla/sessions"
@@ -13,6 +12,7 @@ import (
   "golang.org/x/crypto/bcrypt"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
+  "html/template"
   "hybris/atlas"
   "hybris/db"
   "hybris/enums"
@@ -76,6 +76,43 @@ func WriteResponse(res http.ResponseWriter, response Response) {
   res.Write(data)
 }
 
+func writeSocialWindowResponse(res http.ResponseWriter, token, provider string, loggedIn, failed bool) {
+  res.Header().Set("Content-Type", "text/html; encoding=utf-8")
+  tmpl, err := template.New("test").Parse(`
+    <!doctype html>
+    <html>
+    <head>
+      <title>Callback</title>
+    </head>
+    <body style="background: #1A2326;color: white; font-family: sans-serif;">
+      <div style="position: absolute;top:50%;left:50%; transform: translate(-50%, -50%);">This window should close automatically.</div>
+      <script>
+        window.opener.setTimeout(function() {
+          window.opener.TURN_SOCIAL_CALLBACK({
+            token: '{{.Token}}',
+            type: '{{.Provider}}',
+            loggedIn: {{.LoggedIn}},
+            failed: {{.Failed}}
+          });
+        }, 1);
+      </script>
+    </body>
+  </html>
+  `)
+  if err != nil {
+    res.WriteHeader(500)
+  }
+
+  if err := tmpl.Execute(res, struct {
+    Token    string
+    Provider string
+    LoggedIn bool
+    Failed   bool
+  }{token, provider, loggedIn, failed}); err != nil {
+    res.WriteHeader(500)
+  }
+}
+
 // Route handlers
 
 func indexHandler(res http.ResponseWriter, req *http.Request) {
@@ -83,26 +120,32 @@ func indexHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func authHandler(res http.ResponseWriter, req *http.Request) {
-  accessToken, query, token, loggedIn, failed := "", bson.M{}, "", false, false
+  token, provider, loggedIn, failed := "", "", false, false
 
   info, err := gothic.CompleteUserAuth(res, req)
   if err != nil {
     failed = true
-    goto writeSocial
+    writeSocialWindowResponse(res, token, provider, loggedIn, failed)
+    return
   }
-  // Find the user and log them in if they exist
-  accessToken = info.AccessToken + info.AccessTokenSecret
+
+  provider = info.Provider
+  accessToken := info.AccessToken + info.AccessTokenSecret
+
+  query := bson.M{}
   query[info.Provider+"Token"] = accessToken
   if user, err := db.GetUser(query); err == nil {
     session, err := db.NewSession(user.Id)
     if err != nil {
       failed = true
-      goto writeSocial
+      writeSocialWindowResponse(res, token, provider, loggedIn, failed)
+      return
     }
 
     if err := session.Save(); err != nil {
       failed = true
-      goto writeSocial
+      writeSocialWindowResponse(res, token, provider, loggedIn, failed)
+      return
     }
 
     http.SetCookie(res, &http.Cookie{
@@ -119,29 +162,7 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
     token = atlas.NewToken(info.Provider, accessToken)
   }
 
-writeSocial:
-  res.Header().Set("Content-Type", "text/html; encoding=utf-8")
-  res.Write([]byte(fmt.Sprintf(`
-    <!doctype html>
-    <html>
-    <head>
-      <title>Callback</title>
-    </head>
-    <body style="background: #1A2326;color: white; font-family: sans-serif;">
-      <div style="position: absolute;top:50%;left:50%; transform: translate(-50%, -50%);">This window should close automatically.</div>
-      <script>
-        window.opener.setTimeout(function() {
-          window.opener.TURN_SOCIAL_CALLBACK({
-            token: '%s',
-            type: '%s',
-            loggedIn: %t,
-            failed: %t
-          });
-        }, 1);
-      </script>
-    </body>
-  </html>
-  `, token, info.Provider, loggedIn, failed)))
+  writeSocialWindowResponse(res, token, provider, loggedIn, failed)
 }
 
 func signupSocialHandler(res http.ResponseWriter, req *http.Request) {
