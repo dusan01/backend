@@ -665,7 +665,9 @@ func (c *Client) Receive(msg []byte) {
 
     wg.Wait()
 
-    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, payload).Dispatch(c)
+    NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{
+      "results": payload,
+    }).Dispatch(c)
   case "community.taken":
     var data struct {
       Url string `json:"url"`
