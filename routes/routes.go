@@ -125,16 +125,24 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
 
   res.Header().Set("Content-Type", "text/html; encoding=utf-8")
   res.Write([]byte(fmt.Sprintf(`
-    This window should close automatically.
-    <script>
-      window.opener.setTimeout(function() {
-        window.opener.TURN_SOCIAL_CALLBACK({
-          token: '%s',
-          type: '%s',
-          loggedIn: %t
-        });
-      }, 1);
-    </script>
+    <!doctype html>
+    <html>
+    <head>
+      <title>Callback</callbacl>
+    </head>
+    <body style="background: #1A2326;color: white;">
+      <div style="position: absolute;top:50%;left:50%;transform: translate(-50%, -50%);">This window should close automatically.</div>
+      <script>
+        window.opener.setTimeout(function() {
+          window.opener.TURN_SOCIAL_CALLBACK({
+            token: '%s',
+            type: '%s',
+            loggedIn: %t
+          });
+        }, 1);
+      </script>
+    </body>
+  </html>
   `, token, info.Provider, loggedIn)))
 }
 
