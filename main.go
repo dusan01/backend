@@ -16,7 +16,7 @@ import (
 func init() {
   debugging := flag.Bool("debug", false, "Specifies whether or not logging is in debug mode")
   flag.Parse()
-  debug.Debug = *debugging
+  debug.Debugging = *debugging
 }
 
 func main() {
