@@ -10,6 +10,5 @@ type PlaylistItem struct {
   Title      string        `json:"title"`
   Artist     string        `json:"artist"`
   Order      int           `json:"order"`
-
-  Media MediaInfo `json:"media"`
+  Media      MediaInfo     `json:"media"`
 }

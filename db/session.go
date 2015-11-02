@@ -31,8 +31,8 @@ type Session struct {
 func NewSession(id bson.ObjectId) (*Session, error) {
   cookie := fmt.Sprintf("%x", securecookie.GenerateRandomKey(64))
 
-  if session, err := GetSession(bson.M{"cookie": cookie}); err == nil {
-    return session, nil
+  if _, err := GetSession(bson.M{"cookie": cookie}); err == nil {
+    return NewSession(id)
   }
 
   go debug.Log("Creating session for user: [%s]", id)

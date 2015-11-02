@@ -79,6 +79,8 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
   }
 
   if v, ok := Clients[user.Id]; ok {
+    v.Lock()
+    defer v.Unlock()
     go debug.Log("Client already exists. Terminating old client")
     v.Terminate()
   }

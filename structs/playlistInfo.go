@@ -10,6 +10,5 @@ type PlaylistInfo struct {
   OwnerId  bson.ObjectId `json:"ownerId"`
   Selected bool          `json:"selected"`
   Order    int           `json:"order"`
-
-  Length int `json:"length"`
+  Length   int           `json:"length"`
 }

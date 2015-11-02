@@ -2,6 +2,7 @@ package main
 
 import (
   "flag"
+  "fmt"
   "github.com/gorilla/pat"
   "gopkg.in/mgo.v2"
   "hybris/db"
@@ -43,6 +44,7 @@ func main() {
   }
 
   go debug.Log("Finished")
+  fmt.Println("Finished")
 
   log.Fatal(http.ListenAndServe(":38288", router))
 }
