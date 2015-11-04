@@ -93,7 +93,7 @@ func Match(queries []string, sbp bool) []Result {
     }(community)
   }
 
-  go debug.Log("Took %s to iterate through communities", time.Since(s))
+  debug.Log("Took %s to iterate through communities", time.Since(s))
 
   wg.Wait()
 

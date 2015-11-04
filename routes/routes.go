@@ -126,7 +126,7 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
 
   info, err := gothic.CompleteUserAuth(res, req)
   if err != nil {
-    go debug.Log("[routes -> /auth] Failed to complete user auth: [%s]", err.Error())
+    debug.Log("[routes -> /auth] Failed to complete user auth: [%s]", err.Error())
     failed = true
     writeSocialWindowResponse(res, token, provider, loggedIn, failed)
     return
@@ -140,14 +140,14 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
   if user, err := db.GetUser(query); err == nil {
     session, err := db.NewSession(user.Id)
     if err != nil {
-      go debug.Log("[routes -> /auth] Failed to create session: [%s]", err.Error())
+      debug.Log("[routes -> /auth] Failed to create session: [%s]", err.Error())
       failed = true
       writeSocialWindowResponse(res, token, provider, loggedIn, failed)
       return
     }
 
     if err := session.Save(); err != nil {
-      go debug.Log("[routes -> /auth] Failed to save session: [%s]", err.Error())
+      debug.Log("[routes -> /auth] Failed to save session: [%s]", err.Error())
       failed = true
       writeSocialWindowResponse(res, token, provider, loggedIn, failed)
       return
@@ -164,10 +164,10 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
     })
     loggedIn = true
   } else if err == mgo.ErrNotFound {
-    go debug.Log("[routes -> /auth] Couldn't find user with %s id: [%s]", provider, userId)
+    debug.Log("[routes -> /auth] Couldn't find user with %s id: [%s]", provider, userId)
     token = atlas.NewToken(info.Provider, userId)
   } else {
-    go debug.Log("[routes -> /auth] Failed to get user: [%s]", err.Error())
+    debug.Log("[routes -> /auth] Failed to get user: [%s]", err.Error())
     failed = true
   }
 

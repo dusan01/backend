@@ -2,6 +2,7 @@ package db
 
 import (
   "gopkg.in/mgo.v2/bson"
+  "hybris/debug"
   "hybris/structs"
   "time"
 )
@@ -67,8 +68,9 @@ func (pi PlaylistItem) Delete() error {
 }
 
 func (pi PlaylistItem) Struct() structs.PlaylistItem {
-  media, err := GetMedia(bson.M{"mid": pi.MediaId})
+  media, err := GetMedia(bson.M{"_id": pi.MediaId})
   if err != nil {
+    debug.Log("[db/PlaylistItem.Struct] Failed to get media. Reason: %s", err.Error())
     return structs.PlaylistItem{}
   }
   return structs.PlaylistItem{

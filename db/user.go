@@ -67,13 +67,13 @@ func NewUser(username string) (*User, error) {
 
   // Validate info
   if !validation.Username(username) {
-    go debug.Log("[db > NewUser] Invalid username: %s", username)
+    debug.Log("[db/NewUser] Invalid username: %s", username)
     return nil, errors.New("Invalid username.")
   }
 
   // Check exists
   if err := c.Find(bson.M{"username": username}).One(nil); err == nil {
-    go debug.Log("[db > NewUser] Username taken: %s", username)
+    debug.Log("[db/NewUser] Username taken: %s", username)
     return nil, errors.New("Username taken.")
   }
 
@@ -135,7 +135,7 @@ func (u User) sortPlaylists(playlists []Playlist) []Playlist {
 }
 
 func (u User) recalculatePlaylists(playlists []Playlist) []Playlist {
-  payload := make([]Playlist, len(playlists))
+  payload := []Playlist{}
   for i, playlist := range playlists {
     playlist.Order = i
     payload = append(payload, playlist)

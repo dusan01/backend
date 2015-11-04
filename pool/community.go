@@ -88,7 +88,7 @@ func (c *Community) Advance() {
 
   if c.History != nil {
     if err := c.History.Save(); err != nil {
-      go debug.Log("[pool > Community.Advance] Failed to save community history. Details: [[[ %s ]]]", c.History.Id)
+      debug.Log("[pool > Community.Advance] Failed to save community history. Details: [[[ %s ]]]", c.History.Id)
     }
   }
 
@@ -102,18 +102,18 @@ func (c *Community) Advance() {
 
     playlist, err := Clients[c.Waitlist[0]].U.GetActivePlaylist()
     if err != nil {
-      go debug.Log("[pool > Community.Advance] Failed to retrieve playlist. Details: [[[ %s ||| %s ]]]", c.Waitlist[0], err.Error())
+      debug.Log("[pool > Community.Advance] Failed to retrieve playlist. Details: [[[ %s ||| %s ]]]", c.Waitlist[0], err.Error())
       return
     }
 
     if playlist == nil {
-      go debug.Log("[pool > Community.Advance] Active playlist is nil for user %s", c.Waitlist[0])
+      debug.Log("[pool > Community.Advance] Active playlist is nil for user %s", c.Waitlist[0])
       return
     }
 
     items, err := playlist.GetItems()
     if err != nil {
-      go debug.Log("[pool > Community.Advance] Failed to get playlist items. Details: [[[ %s ||| %s ]]]", playlist.Id, err.Error())
+      debug.Log("[pool > Community.Advance] Failed to get playlist items. Details: [[[ %s ||| %s ]]]", playlist.Id, err.Error())
       return
     }
 
@@ -122,13 +122,13 @@ func (c *Community) Advance() {
     items = append(items[1:], playlistItem)
 
     if err := playlist.SaveItems(items); err != nil {
-      go debug.Log("[pool > Community.Advance] Failed to save playlist items. Details: [[[ %s ||| %s ]]]", playlist.Id, err.Error())
+      debug.Log("[pool > Community.Advance] Failed to save playlist items. Details: [[[ %s ||| %s ]]]", playlist.Id, err.Error())
       return
     }
 
     media, err := db.GetMedia(bson.M{"mid": playlistItem.MediaId})
     if err != nil {
-      go debug.Log("[pool > Community.Advance] Failed to retrieve media. Details: [[[ %s ||| %s ]]]", playlistItem.MediaId, err.Error())
+      debug.Log("[pool > Community.Advance] Failed to retrieve media. Details: [[[ %s ||| %s ]]]", playlistItem.MediaId, err.Error())
       return
     }
 
@@ -171,7 +171,7 @@ func (c *Community) Join(user *db.User) int {
   // Should look into new solutions. It's likely that due to asynchronous nature, it
   // will send the 'user.join' event to the client that has just joined the
   // community also
-  go debug.Log("[pool > community.Join]  User %s %s joined community %s %s",
+  debug.Log("[pool > community.Join]  User %s %s joined community %s %s",
     user.Username, user.Id.String(), c.Community.Name, c.Community.Id.String())
   go c.Emit(NewEvent("user.join", user.Struct()))
   c.Population = append(c.Population, user)
@@ -190,7 +190,7 @@ func (c *Community) Leave(user *db.User) int {
       c.Population[len(c.Population)-1] = nil
       c.Population = c.Population[:len(c.Population)-1]
       search.UpsertCommunity(c.Community, len(c.Population))
-      go debug.Log("[pool > community.Leave] User %s %s left community %s (%s)",
+      debug.Log("[pool > community.Leave] User %s %s left community %s (%s)",
         user.Username, user.Id.String(), c.Community.Name, c.Community.Id.String())
       go c.Emit(NewEvent("user.leave", user.Struct()))
       return enums.RESPONSE_CODES.OK

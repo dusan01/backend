@@ -23,11 +23,11 @@ func init() {
 func main() {
   runtime.GOMAXPROCS(runtime.NumCPU())
 
-  go debug.Log("Creating and attaching routes")
+  debug.Log("Creating and attaching routes")
   router := pat.New()
   routes.Attach(router)
 
-  go debug.Log("Loading communities into memory")
+  debug.Log("Loading communities into memory")
   session, err := mgo.Dial("127.0.0.1")
   if err != nil {
     panic(err)
@@ -43,8 +43,7 @@ func main() {
     debug.Log("Loaded community %s", r.Id)
   }
 
-  go debug.Log("Finished")
-  fmt.Println("Finished")
+  debug.Log("Finished")
 
   log.Fatal(http.ListenAndServe(":38288", router))
 }

@@ -24,7 +24,7 @@ func NewServer(conn *websocket.Conn) {
 
   server.Send([]byte(`{"__auth": true}`))
   go server.Listen()
-  go debug.Log("[pool > NewServer] Successfully connected internal server")
+  debug.Log("[pool > NewServer] Successfully connected internal server")
 }
 
 func (s *Server) Terminate() {
@@ -47,7 +47,7 @@ func (s *Server) Send(data []byte) {
   defer s.ConnM.Unlock()
   s.Conn.SetWriteDeadline(time.Now().Add(55 * time.Second))
   if err := s.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-    go debug.Log("[pool > Server.Send] Failed to send message: [%s]", err.Error())
+    debug.Log("[pool > Server.Send] Failed to send message: [%s]", err.Error())
     s.Terminate()
   }
 }
@@ -71,13 +71,13 @@ func (s *Server) Receive(msg []byte) {
     }
 
     if err := json.Unmarshal(r.Data, &data); err != nil {
-      go debug.Log("[pool > server.Recieve] Failed to unmarshal json: [%s]", err.Error())
+      debug.Log("[server | cook] Failed to unmarshal json: [%s]", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(s)
       return
     }
 
     _, err := db.GetSession(bson.M{"cookie": data.Auth})
-    go debug.Log("[pool > server.Receive] Cookie exists: [%t]", err == nil)
+    debug.Log("[server | cook] Cookie exists: [%t]", err == nil)
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, map[string]interface{}{
       "ok": err == nil,
     }).Dispatch(s)

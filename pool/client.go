@@ -36,21 +36,21 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
 
   cookie, err := req.Cookie("auth")
   if err != nil {
-    go debug.Log("[pool > NewClient] Failed to retrieve auth cookie")
+    debug.Log("[pool -> NewClient] Failed to retrieve auth cookie")
     conn.Close()
     return
   }
 
   session, err := db.GetSession(bson.M{"cookie": cookie.Value})
   if err != nil {
-    go debug.Log("[pool > NewClient] Failed to retieve user session with cookie value: [%s]", cookie.Value)
+    debug.Log("[pool -> NewClient] Failed to retieve user session with cookie value: [%s]", cookie.Value)
     conn.Close()
     return
   }
 
   user, err := db.GetUser(bson.M{"_id": session.UserId})
   if err != nil {
-    go debug.Log("[pool > NewClient] Failed to find user with session id: [%s]", session.UserId)
+    debug.Log("[pool -> NewClient] Failed to find user with session id: [%s]", session.UserId)
     conn.Close()
     return
   }
@@ -61,13 +61,13 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
       return
     } else {
       if err := globalBan.Delete(); err != nil {
-        go debug.Log("[pool > NewClient] Failed to delete global ban: [%s]", globalBan.Id)
+        debug.Log("[pool -> NewClient] Failed to delete global ban: [%s]", globalBan.Id)
         conn.Close()
         return
       }
     }
   } else if err != mgo.ErrNotFound {
-    go debug.Log("[pool > NewClient] Failed to retrieve global ban: [%s]", err.Error())
+    debug.Log("[pool -> NewClient] Failed to retrieve global ban: [%s]", err.Error())
     conn.Close()
     return
   }
@@ -81,7 +81,7 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
   if v, ok := Clients[user.Id]; ok {
     v.Lock()
     defer v.Unlock()
-    go debug.Log("Client already exists. Terminating old client")
+    debug.Log("[pool -> NewClient] Client already exists. Terminating old client")
     v.Terminate()
   }
 
@@ -89,7 +89,7 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
 
   client.Send([]byte(`{"hello":true}`))
   go client.Listen()
-  go debug.Log("Successfully connected client")
+  debug.Log("[pool > NewClient] Successfully connected client")
 }
 
 func (c *Client) Terminate() {
@@ -128,7 +128,7 @@ func (c *Client) Receive(msg []byte) {
   }
 
   if err := json.Unmarshal(msg, &r); err != nil {
-    go debug.Log("[pool > client.Receive] Client sent bad data")
+    debug.Log("[pool > client.Receive] Client sent bad data")
     return
   }
 
@@ -148,6 +148,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     if err := json.Unmarshal(r.Data, &data); err != nil {
+      debug.Log("[pool/Client.Receive -> adm.broadcast] (%s) Failed to unmarshal data")
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
@@ -156,6 +157,7 @@ func (c *Client) Receive(msg []byte) {
     defer c.Unlock()
 
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
+      debug.Log("[pool/Client.Receive -> adm.broadcast] (%s) User is not authorized", c.U.Id)
       go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
@@ -175,27 +177,35 @@ func (c *Client) Receive(msg []byte) {
       Reason   string        `json:"reason"`
     }
 
-    c.Lock()
-    defer c.Unlock()
-
     if err := json.Unmarshal(r.Data, &data); err != nil {
+      debug.Log("[pool/Client.Receive -> adm.globalBan] (%s) Failed to unmarshal data", c.U.Id)
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
 
+    c.Lock()
+    defer c.Unlock()
+
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
+      debug.Log("[pool/Client.Receive -> adm.globalBan] (%s) User is not authorized", c.U.Id)
       go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
     user, err := db.GetUser(bson.M{"_id": data.Id})
-    if err != nil {
+    if err == mgo.ErrNotFound {
+      debug.Log("[pool/Client.Receive -> adm.globalBan] (%s) Failed to find banne: %s", c.U.Id, data.Id)
       go NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    } else if err != nil {
+      debug.Log("[pool/Client.Receive -> adm.globalBan] (%s) Failed to retrieve user %s", c.U.Id, data.Id)
+      go NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     globalBan := db.NewGlobalBan(user.Id, c.U.Id, data.Reason, data.Duration)
     if err := globalBan.Save(); err != nil {
+      debug.Log("[pool/Client.Receive -> adm.globalBan] (%s) Failed to save global ban into database", c.U.Id)
       go NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
@@ -221,13 +231,13 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
+    c.Lock()
+    defer c.Unlock()
+
     if c.U.GlobalRole < enums.GLOBAL_ROLES.ADMIN {
       go NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
-
-    c.Lock()
-    defer c.Unlock()
 
     Maintenance = data.Start
 
@@ -311,20 +321,20 @@ func (c *Client) Receive(msg []byte) {
         return
       } else {
         if err := mute.Delete(); err != nil {
-          go debug.Log("Failed to delete mute: [%s]", err.Error())
+          debug.Log("Failed to delete mute: [%s]", err.Error())
           NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
           return
         }
       }
     } else if err != mgo.ErrNotFound {
-      go debug.Log("Failed to retrieve mute from db: [%s]", err.Error())
+      debug.Log("Failed to retrieve mute from db: [%s]", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     chat := db.NewChat(c.U.Id, community.Community.Id, data.Me, data.Message)
     if err := chat.Save(); err != nil {
-      go debug.Log("[pool > client.Receive] Failed to save chat message: [%s]", err.Error())
+      debug.Log("[pool > client.Receive] Failed to save chat message: [%s]", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
@@ -648,7 +658,7 @@ func (c *Client) Receive(msg []byte) {
     results := search.Communities(data.Query, data.SortByPopulation)
     results = results[:int(math.Min(50, float64(len(results))))]
     results = results[int(math.Min(float64(data.Offset), float64(len(results)))):]
-    go debug.Log("[pool > client.Receive] Took %s to search communities for %s", time.Since(s), data.Query)
+    debug.Log("[pool/Client.Receive -> community.search] Took %s to search communities for %s", time.Since(s), data.Query)
 
     payload := make([]structs.LandingCommunityListing, len(results))
     var wg sync.WaitGroup
@@ -818,35 +828,53 @@ func (c *Client) Receive(msg []byte) {
     }
 
     c.Lock()
+    defer c.Unlock()
 
     playlists, err := c.U.GetPlaylists()
     if err != nil {
+      debug.Log("[pool/Client.Receive -> media.import] (%s) Could not get playlists. Reason: %s", c.U.Id, err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
-    playlist, err := db.NewPlaylist(data.PlaylistName, c.U.Id, true)
-    if err != nil {
-      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
-      return
-    }
-
     if len(playlists) >= 25 {
+      debug.Log("[pool/Client.Receive -> media.import] (%s) Could not create playlist, user has more than 25 already", c.U.Id)
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
     }
 
-    if err := playlist.Save(); err != nil {
+    playlist, err := db.NewPlaylist(data.PlaylistName, c.U.Id)
+    if err != nil {
+      debug.Log("[pool/Client.Receive -> media.import] (%s) Failed to create playlist. Reason: %s", c.U.Id, err.Error())
+      NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
+      return
+    }
+
+    playlists = append(playlists, *playlist)
+
+    if err := c.U.SavePlaylists(playlists); err != nil {
+      debug.Log("[pool/Client.Receive -> media.import] (%s) Failed to save playlist. Reason: %s", c.U.Id, err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     if err := playlist.Select(c.U); err != nil {
+      debug.Log("[pool/Client.Receive -> media.import] (%s) Failed to select playlist. Reason: %s", c.U.Id, err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     c.Unlock()
+
+    // Make sure we aren't adding any duplicate items
+    t := map[string]dataItem{}
+    for _, v := range data.Items {
+      t[v.MediaId] = v
+    }
+    data.Items = []dataItem{}
+    for _, v := range t {
+      data.Items = append(data.Items, v)
+    }
 
     // How it works
     //  Basically, we define a few things first. The amount passed,
@@ -861,63 +889,118 @@ func (c *Client) Receive(msg []byte) {
     //  We do this by looping through both the values and the keys and appending them to their appropriate
     //  position.
 
+    // var (
+    // 	m      sync.Mutex
+    // 	wg     sync.WaitGroup
+    // 	passed = make(map[int]db.PlaylistItem)
+    // 	failed int
+    // )
+
+    // total := len(data.Items)
+
+    // if total > 500 {
+    // 	failed = total - 500
+    // 	data.Items = data.Items[:500]
+    // }
+
+    // wg.Add(len(data.Items))
+
+    // for i, item := range data.Items {
+    // 	go func(i int, item dataItem) {
+    // 		defer wg.Done()
+    // 		media, err := db.NewMedia(item.MediaId, item.Type)
+    // 		if err != nil {
+    // 			m.Lock()
+    // 			defer m.Unlock()
+    // 			failed++
+    // 			return
+    // 		}
+
+    // 		if err := media.Save(); err != nil {
+    // 			m.Lock()
+    // 			defer m.Unlock()
+    // 			failed++
+    // 			return
+    // 		}
+
+    // 		playlistItem := db.NewPlaylistItem(playlist.Id, media.Id, media.Title, media.Artist)
+    // 		passed[i] = playlistItem
+    // 	}(i, item)
+    // }
+
+    // wg.Wait()
+
+    // c.Lock()
+
+    // playlistItems := make([]db.PlaylistItem, len(passed))
+    // for k, v := range passed {
+    // 	debug.Log("Passed item: %#v", v)
+    // 	playlistItems[k] = v
+    // }
+    type outItem struct {
+      Passed bool
+      Item   db.PlaylistItem
+    }
+
     var (
       m      sync.Mutex
       wg     sync.WaitGroup
-      passed = make(map[int]db.PlaylistItem)
+      out    = make([]outItem, len(data.Items))
+      passed int
       failed int
     )
 
-    total := len(data.Items)
-
-    if total > 500 {
+    if total := len(data.Items); total > 500 {
       failed = total - 500
       data.Items = data.Items[:500]
     }
 
     wg.Add(len(data.Items))
-
     for i, item := range data.Items {
       go func(i int, item dataItem) {
         defer wg.Done()
+        payload := outItem{}
+
         media, err := db.NewMedia(item.MediaId, item.Type)
         if err != nil {
-          m.Lock()
-          defer m.Unlock()
-          failed++
-          return
+          goto save
         }
 
         if err := media.Save(); err != nil {
-          m.Lock()
-          defer m.Unlock()
-          failed++
-          return
+          goto save
         }
 
-        playlistItem := db.NewPlaylistItem(playlist.Id, media.Id, media.Title, media.Artist)
-        passed[i] = playlistItem
+        payload.Item = db.NewPlaylistItem(playlist.Id, media.Id, media.Title, media.Artist)
+        payload.Passed = true
+      save:
+        m.Lock()
+        defer m.Unlock()
+        out[i] = payload
       }(i, item)
     }
 
     wg.Wait()
-
     c.Lock()
-    defer c.Unlock()
 
-    playlistItems := make([]db.PlaylistItem, len(passed))
-    for k, v := range passed {
-      playlistItems[k] = v
+    playlistItems := []db.PlaylistItem{}
+    for _, v := range out {
+      if !v.Passed {
+        failed++
+        continue
+      }
+      playlistItems = append(playlistItems, v.Item)
+      passed++
     }
 
     if err := playlist.SaveItems(playlistItems); err != nil {
+      debug.Log("[pool/Client.Receive -> media.import] Failed to save playlist items. Reason: %s", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.SERVER_ERROR, r.Action, nil).Dispatch(c)
       return
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{
       "playlistId": playlist.Id,
-      "passed":     len(passed),
+      "passed":     passed,
       "failed":     failed,
     }).Dispatch(c)
   case "media.search":
@@ -1472,7 +1555,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    playlist, err := db.NewPlaylist(data.Name, c.U.Id, true)
+    playlist, err := db.NewPlaylist(data.Name, c.U.Id)
     if err != nil {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return

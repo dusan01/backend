@@ -36,7 +36,7 @@ func NewToken(provider, userId string) (token string) {
 func AddIntegration(user *db.User, token string) error {
   session, ok := sessions[token]
   if !ok {
-    go debug.Log("[atlas > AddIntegration] Invalid token: [%s]", token)
+    debug.Log("[atlas > AddIntegration] Invalid token: [%s]", token)
     return errors.New("Invalid token.")
   }
 
@@ -55,7 +55,7 @@ func AddIntegration(user *db.User, token string) error {
 func NewSocialUser(username, token string) (*db.User, error) {
   user, err := db.NewUser(username)
   if err != nil {
-    go debug.Log("[atlas > NewSocialUser] Failed to create user: [%s]", err.Error())
+    debug.Log("[atlas > NewSocialUser] Failed to create user: [%s]", err.Error())
     return nil, err
   }
   if err := AddIntegration(user, token); err != nil {
@@ -73,21 +73,21 @@ func NewEmailUser(username, email, password string) (*db.User, error) {
 
   email = strings.ToLower(email)
   if !validation.Email(email) {
-    go debug.Log("[atlas > NewEmailUser] Email is invalid: [%s]", email)
+    debug.Log("[atlas > NewEmailUser] Email is invalid: [%s]", email)
     return nil, errors.New("Invalid email.")
   }
   if !validation.Password(password) {
-    go debug.Log("[atlas > NewEmailUser] Password is invalid")
+    debug.Log("[atlas > NewEmailUser] Password is invalid")
     return nil, errors.New("Invalid password.")
   }
   if err := db.DB.C("users").Find(bson.M{"email": email}).One(nil); err == nil {
-    go debug.Log("[atlas > NewEmailUser] Email already in use: [%s]", email)
+    debug.Log("[atlas > NewEmailUser] Email already in use: [%s]", email)
     return nil, errors.New("Email taken.")
   }
 
   hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
   if err != nil {
-    go debug.Log("[atlas > NewEmailUser] Failed to generate password hash")
+    debug.Log("[atlas > NewEmailUser] Failed to generate password hash")
     return nil, errors.New("Server error.")
   }
 

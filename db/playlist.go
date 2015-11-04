@@ -35,18 +35,18 @@ type Playlist struct {
   Updated time.Time `json:"updated" bson:"updated"`
 }
 
-func NewPlaylist(name string, ownerId bson.ObjectId, selected bool) (*Playlist, error) {
+func NewPlaylist(name string, ownerId bson.ObjectId) (*Playlist, error) {
   if length := len(name); length < 1 || length > 30 {
     return nil, errors.New("Name is invalid")
   }
 
   return &Playlist{
-    Id:       bson.NewObjectId(),
-    Name:     name,
-    OwnerId:  ownerId,
-    Selected: selected,
-    Created:  time.Now(),
-    Updated:  time.Now(),
+    Id:      bson.NewObjectId(),
+    Name:    name,
+    OwnerId: ownerId,
+    Order:   -1,
+    Created: time.Now(),
+    Updated: time.Now(),
   }, nil
 }
 
@@ -66,16 +66,13 @@ func (p Playlist) Delete() error {
 func (p Playlist) Select(u *User) error {
   playlists, err := u.GetPlaylists()
   if err != nil {
-    return nil
+    return err
   }
 
   for _, playlist := range playlists {
     playlist.Selected = (playlist.Id == p.Id)
-    if err := playlist.Save(); err != nil {
-      return err
-    }
   }
-  return nil
+  return u.SavePlaylists(playlists)
 }
 
 func (p Playlist) GetItems() ([]PlaylistItem, error) {
@@ -106,7 +103,7 @@ func (p Playlist) sortItems(items []PlaylistItem) []PlaylistItem {
 }
 
 func (p Playlist) recalculateItems(items []PlaylistItem) []PlaylistItem {
-  payload := make([]PlaylistItem, len(items))
+  payload := []PlaylistItem{}
   for i, item := range items {
     item.Order = i
     payload = append(payload, item)

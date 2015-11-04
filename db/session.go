@@ -35,7 +35,7 @@ func NewSession(id bson.ObjectId) (*Session, error) {
     return NewSession(id)
   }
 
-  go debug.Log("Creating session for user: [%s]", id)
+  debug.Log("Creating session for user: [%s]", id)
 
   return &Session{
     Id:      bson.NewObjectId(),
@@ -54,7 +54,7 @@ func GetSession(query interface{}) (*Session, error) {
 }
 
 func (s Session) Save() error {
-  go debug.Log("Saving session: [{\n\t'cookie': %s,\n\t'user': %s\n}]", s.Cookie, s.UserId)
+  debug.Log("Saving session: [{\n\t'cookie': %s,\n\t'user': %s\n}]", s.Cookie, s.UserId)
   s.Updated = time.Now()
   _, err := DB.C("sessions").UpsertId(s.Id, s)
   return err
