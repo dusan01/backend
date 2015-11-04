@@ -2,7 +2,6 @@ package main
 
 import (
   "flag"
-  "fmt"
   "github.com/gorilla/pat"
   "gopkg.in/mgo.v2"
   "hybris/db"
