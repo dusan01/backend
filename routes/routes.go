@@ -2,6 +2,7 @@ package routes
 
 import (
   "encoding/json"
+  "flag"
   "github.com/gorilla/pat"
   "github.com/gorilla/securecookie"
   "github.com/gorilla/sessions"
@@ -25,7 +26,12 @@ import (
   "time"
 )
 
+var (
+  nocaptcha bool
+)
+
 func init() {
+  flag.BoolVar(&nocaptcha, "nocaptcha", false, "Determines whether or not routes will use recaptcha")
   gothic.Store = sessions.NewCookieStore(securecookie.GenerateRandomKey(64))
   goth.UseProviders(
     twitter.New("sVHYAm8YdmTn8H5R4zbqQ15db", "T80kt2I0n7fAJyMtihdn2zh0KCCbyYoUPpbbAJGTBIGp3q2Yir", "http://devv.turn.fm/_/auth/twitter/callback"),
@@ -237,29 +243,31 @@ func signupHanlder(res http.ResponseWriter, req *http.Request) {
   }
 
   // ReCaptcha
-  captchaClient := &http.Client{}
-  captchaRes, err := captchaClient.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
-    "secret":   {"6LfDhg4TAAAAALGzHUmWr-zcuNVgE5oU2PYjVj4I"},
-    "response": {data.Recaptcha},
-    "remoteip": {strings.Split(req.RemoteAddr, ":")[0]},
-  })
-  if err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
-    return
-  }
+  if !nocaptcha {
+    captchaClient := &http.Client{}
+    captchaRes, err := captchaClient.PostForm("https://www.google.com/recaptcha/api/siteverify", url.Values{
+      "secret":   {"6LfDhg4TAAAAALGzHUmWr-zcuNVgE5oU2PYjVj4I"},
+      "response": {data.Recaptcha},
+      "remoteip": {strings.Split(req.RemoteAddr, ":")[0]},
+    })
+    if err != nil {
+      WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
+      return
+    }
 
-  var recaptchaData struct {
-    Success bool `json:"success"`
-  }
+    var recaptchaData struct {
+      Success bool `json:"success"`
+    }
 
-  if err := json.NewDecoder(captchaRes.Body).Decode(&recaptchaData); err != nil {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
-    return
-  }
+    if err := json.NewDecoder(captchaRes.Body).Decode(&recaptchaData); err != nil {
+      WriteResponse(res, Response{enums.RESPONSE_CODES.SERVER_ERROR, "Server error.", nil})
+      return
+    }
 
-  if !recaptchaData.Success {
-    WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Invalid recaptcha.", nil})
-    return
+    if !recaptchaData.Success {
+      WriteResponse(res, Response{enums.RESPONSE_CODES.BAD_REQUEST, "Invalid recaptcha.", nil})
+      return
+    }
   }
 
   // Create User

@@ -13,13 +13,8 @@ import (
   "runtime"
 )
 
-func init() {
-  debugging := flag.Bool("debug", false, "Specifies whether or not logging is in debug mode")
-  flag.Parse()
-  debug.Debugging = *debugging
-}
-
 func main() {
+  flag.Parse()
   runtime.GOMAXPROCS(runtime.NumCPU())
 
   debug.Log("Creating and attaching routes")

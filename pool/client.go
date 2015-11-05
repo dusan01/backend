@@ -779,7 +779,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if len(playlistItems) >= 500 {
+    if c.U.GlobalRole < enums.GLOBAL_ROLES.TRIAL_AMBASSADOR && len(playlistItems) > 500 {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
@@ -837,7 +837,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if len(playlists) >= 25 {
+    if len(playlists) > 25 {
       debug.Log("[pool/Client.Receive -> media.import] (%s) Could not create playlist, user has more than 25 already", c.U.Id)
       NewAction(r.Id, enums.RESPONSE_CODES.FORBIDDEN, r.Action, nil).Dispatch(c)
       return
@@ -950,7 +950,7 @@ func (c *Client) Receive(msg []byte) {
       failed int
     )
 
-    if total := len(data.Items); total > 500 {
+    if total := len(data.Items); c.U.GlobalRole < enums.GLOBAL_ROLES.TRIAL_AMBASSADOR && total > 500 {
       failed = total - 500
       data.Items = data.Items[:500]
     }
@@ -2045,7 +2045,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
 
-    if len(playlistItems) >= 500 {
+    if c.U.GlobalRole < enums.GLOBAL_ROLES.TRIAL_AMBASSADOR && len(playlistItems) > 500 {
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(c)
       return
     }
