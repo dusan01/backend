@@ -2,6 +2,7 @@ package pool
 
 import (
   "encoding/json"
+  "hybris/debug"
 )
 
 type Message interface {
@@ -44,6 +45,7 @@ func NewEvent(event string, data interface{}) Event {
 func (e Event) Dispatch(s Sender) {
   payload, err := json.Marshal(e)
   if err != nil {
+    debug.Log("[pool/Event.Dispatch] Failed to dispatch event. Reason: %s", err.Error())
     return
   }
 

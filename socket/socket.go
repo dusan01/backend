@@ -27,7 +27,7 @@ var Upgrader = websocket.Upgrader{
 func NewSocket(res http.ResponseWriter, req *http.Request) {
   conn, err := Upgrader.Upgrade(res, req, nil)
   if err != nil {
-    debug.Log("[socket > NewSocket] Failed to upgrade socket: [%s]", err.Error())
+    debug.Log("[socket/NewSocket] Failed to upgrade socket: [%s]", err.Error())
     return
   }
 
@@ -39,6 +39,10 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
   })
 
   go Heartbeat(conn)
+
+  dcTimer := time.AfterFunc(time.Second*10, func() {
+    conn.Close()
+  })
 
   if _, msg, err := conn.ReadMessage(); err == nil {
     var data struct {
@@ -52,16 +56,18 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
     }
 
     if data.Hello {
-      debug.Log("[socket > NewSocket] Client handshake successful")
+      dcTimer.Stop()
+      debug.Log("[socket/NewSocket] Client handshake successful")
       pool.NewClient(req, conn)
     } else if data.Server == "09fj032jf093j09mVJVWOimjzoimvor3imjmR23v43" && strings.Split(req.RemoteAddr, ":")[0] == "127.0.0.1" {
+      dcTimer.Stop()
       pool.NewServer(conn)
     } else {
-      debug.Log("[socket > NewSocket] Received bad handshake")
+      debug.Log("[socket/NewSocket] Received bad handshake")
       conn.Close()
     }
   } else {
-    debug.Log("[socket > NewSocket] Connection terminated unexpectedly: [%s]", err.Error())
+    debug.Log("[socket/NewSocket] Connection terminated unexpectedly. Reason: %s", err.Error())
     conn.Close()
   }
 }

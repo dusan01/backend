@@ -36,21 +36,21 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
 
   cookie, err := req.Cookie("auth")
   if err != nil {
-    debug.Log("[pool -> NewClient] Failed to retrieve auth cookie")
+    debug.Log("[pool/NewClient] Failed to retrieve auth cookie")
     conn.Close()
     return
   }
 
   session, err := db.GetSession(bson.M{"cookie": cookie.Value})
   if err != nil {
-    debug.Log("[pool -> NewClient] Failed to retieve user session with cookie value: [%s]", cookie.Value)
+    debug.Log("[pool/NewClient] Failed to retieve user session with cookie value: [%s]", cookie.Value)
     conn.Close()
     return
   }
 
   user, err := db.GetUser(bson.M{"_id": session.UserId})
   if err != nil {
-    debug.Log("[pool -> NewClient] Failed to find user with session id: [%s]", session.UserId)
+    debug.Log("[pool/NewClient] Failed to find user with session id: [%s]", session.UserId)
     conn.Close()
     return
   }
@@ -61,13 +61,13 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
       return
     } else {
       if err := globalBan.Delete(); err != nil {
-        debug.Log("[pool -> NewClient] Failed to delete global ban: [%s]", globalBan.Id)
+        debug.Log("[pool/NewClient] Failed to delete global ban: [%s]", globalBan.Id)
         conn.Close()
         return
       }
     }
   } else if err != mgo.ErrNotFound {
-    debug.Log("[pool -> NewClient] Failed to retrieve global ban: [%s]", err.Error())
+    debug.Log("[pool/NewClient] Failed to retrieve global ban: [%s]", err.Error())
     conn.Close()
     return
   }
@@ -81,7 +81,8 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
   if v, ok := Clients[user.Id]; ok {
     v.Lock()
     defer v.Unlock()
-    debug.Log("[pool -> NewClient] Client already exists. Terminating old client")
+    debug.Log("[pool/NewClient] Client already exists. Terminating old client")
+    NewEvent("staleSession", true).Dispatch(v)
     v.Terminate()
   }
 
@@ -89,7 +90,7 @@ func NewClient(req *http.Request, conn *websocket.Conn) {
 
   client.Send([]byte(`{"hello":true}`))
   go client.Listen()
-  debug.Log("[pool > NewClient] Successfully connected client")
+  debug.Log("[pool/NewClient] Successfully connected client")
 }
 
 func (c *Client) Terminate() {
@@ -128,7 +129,7 @@ func (c *Client) Receive(msg []byte) {
   }
 
   if err := json.Unmarshal(msg, &r); err != nil {
-    debug.Log("[pool > client.Receive] Client sent bad data")
+    debug.Log("[pool/client.Receive] Client sent bad data")
     return
   }
 
@@ -141,6 +142,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Admin
   */
+  // -- adm.broadcast
   case "adm.broadcast":
     var data struct {
       Type    int    `json:"type"`
@@ -170,6 +172,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- adm.globalBan
   case "adm.globalBan":
     var data struct {
       Id       bson.ObjectId `json:"id"`
@@ -221,6 +224,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- adm.maintenance
   case "adm.maintenance":
     var data struct {
       Start bool `json:"start"`
@@ -253,6 +257,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Chat
   */
+  // -- chat.delete
   case "chat.delete":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -298,6 +303,7 @@ func (c *Client) Receive(msg []byte) {
     }))
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- chat.send
   case "chat.send":
     var data struct {
       Me      bool   `json:"me"`
@@ -346,6 +352,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Community
   */
+  // -- community.create
   case "community.create":
     var data struct {
       Url  string `json:"url"`
@@ -387,6 +394,7 @@ func (c *Client) Receive(msg []byte) {
     _ = NewCommunity(community)
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, community.Struct()).Dispatch(c)
+  // -- community.edit
   case "community.edit":
     var data struct {
       Id              bson.ObjectId `json:"id"`
@@ -469,6 +477,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, community.Community.Struct()).Dispatch(c)
+  // -- community.getHistory
   case "community.getHistory":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -497,6 +506,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, db.StructCommunityHistory(history)).Dispatch(c)
+  // -- community.getInfo
   case "community.getInfo":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -519,6 +529,7 @@ func (c *Client) Receive(msg []byte) {
     community := GetCommunity(communityData.Id)
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, community.Community.Struct()).Dispatch(c)
+  // -- community.getStaff
   case "community.getStaff":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -547,6 +558,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, db.StructCommunityStaff(staff)).Dispatch(c)
+  // -- community.getState
   case "community.getState":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -570,6 +582,7 @@ func (c *Client) Receive(msg []byte) {
     state := community.GetState()
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, state).Dispatch(c)
+  // -- community.getUsers
   case "community.getUsers":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -596,6 +609,7 @@ func (c *Client) Receive(msg []byte) {
       users = append(users, u.Id)
     }
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, users).Dispatch(c)
+  // -- community.join
   case "community.join":
     var data struct {
       Url string `json:"url"`
@@ -642,6 +656,7 @@ func (c *Client) Receive(msg []byte) {
     }
     c.Community = community.Community.Id
     NewAction(r.Id, community.Join(c.U), r.Action, bson.M{"id": community.Community.Id}).Dispatch(c)
+  // -- community.search
   case "community.search":
     var data struct {
       Query            string `json:"query"`
@@ -680,6 +695,7 @@ func (c *Client) Receive(msg []byte) {
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, bson.M{
       "results": payload,
     }).Dispatch(c)
+  // -- community.taken
   case "community.taken":
     var data struct {
       Url string `json:"url"`
@@ -695,6 +711,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Dj
   */
+  // -- dj.join
   case "dj.join":
     c.Lock()
     defer c.Unlock()
@@ -722,12 +739,14 @@ func (c *Client) Receive(msg []byte) {
     community := GetCommunity(c.Community)
 
     NewAction(r.Id, community.JoinWaitlist(c.U), r.Action, nil).Dispatch(c)
+  // -- dj.leave
   case "dj.leave":
     c.Lock()
     defer c.Unlock()
 
     community := GetCommunity(c.Community)
     NewAction(r.Id, community.LeaveWaitlist(c.U), r.Action, nil).Dispatch(c)
+  // -- dj.skip
   case "dj.skip":
     c.Lock()
     defer c.Unlock()
@@ -744,6 +763,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Media
   */
+  // -- media.add
   case "media.add":
     var data struct {
       Type       int           `json:"type"`
@@ -812,6 +832,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- media.import
   case "media.import":
     type dataItem struct {
       Type    int    `json:"type"`
@@ -1003,6 +1024,7 @@ func (c *Client) Receive(msg []byte) {
       "passed":     passed,
       "failed":     failed,
     }).Dispatch(c)
+  // -- media.search
   case "media.search":
     var data struct {
       Type  int    `json:"type"`
@@ -1038,6 +1060,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Moderation
   */
+  // -- moderation.addDj
   case "moderation.addDj":
     var data struct {
       UserId bson.ObjectId `json:"userId"`
@@ -1074,6 +1097,7 @@ func (c *Client) Receive(msg []byte) {
     client.Unlock()
 
     action.Dispatch(c)
+  // -- moderation.ban
   case "moderation.ban":
     var data struct {
       UserId bson.ObjectId `json:"userId"`
@@ -1162,6 +1186,7 @@ func (c *Client) Receive(msg []byte) {
     go community.Emit(event)
 
     NewAction(r.Id, rCode, r.Action, nil).Dispatch(c)
+  // -- moderation.clearChat
   case "moderation.clearChat":
     c.Lock()
     defer c.Unlock()
@@ -1176,6 +1201,7 @@ func (c *Client) Receive(msg []byte) {
     go community.Emit(NewEvent("chat.clear", nil))
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- moderation.deleteChat
   case "moderation.deleteChat":
     var data struct {
       Id bson.ObjectId `json:"id"`
@@ -1216,6 +1242,7 @@ func (c *Client) Receive(msg []byte) {
     }))
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- moderation.forceSkip
   case "moderation.forceSkip":
     c.Lock()
     defer c.Unlock()
@@ -1230,6 +1257,7 @@ func (c *Client) Receive(msg []byte) {
     community.Advance()
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- moderation.kick
   case "moderation.kick":
     var data struct {
       UserId bson.ObjectId `json:"userId"`
@@ -1273,6 +1301,7 @@ func (c *Client) Receive(msg []byte) {
     go community.Emit(event)
 
     NewAction(r.Id, rCode, r.Action, nil).Dispatch(c)
+  // -- moderation.moveDj
   case "moderation.moveDj":
     var data struct {
       UserId   bson.ObjectId `json:"userId"`
@@ -1302,6 +1331,7 @@ func (c *Client) Receive(msg []byte) {
 
     community.Move(data.UserId, data.Position)
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- moderation.mute
   case "moderation.mute":
     var data struct {
       UserId bson.ObjectId `json:"userId"`
@@ -1390,6 +1420,7 @@ func (c *Client) Receive(msg []byte) {
     go community.Emit(event)
 
     NewAction(r.Id, rCode, r.Action, nil).Dispatch(c)
+  // -- moderation.removeDj
   case "moderation.removeDj":
     var data struct {
       UserId bson.ObjectId `json:"userId"`
@@ -1426,6 +1457,7 @@ func (c *Client) Receive(msg []byte) {
     client.Unlock()
 
     action.Dispatch(c)
+  // -- moderation.setRole
   case "moderation.setRole":
     var data struct {
       UserId bson.ObjectId `json:"userId"`
@@ -1492,6 +1524,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Playlist
   */
+  // -- playlist.activate
   case "playlist.activate":
     var data struct {
       PlaylistId bson.ObjectId `json:"playlistId"`
@@ -1536,6 +1569,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- playlist.create
   case "playlist.create":
     var data struct {
       Name string `json:"name"`
@@ -1574,6 +1608,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, playlist.Struct()).Dispatch(c)
+  // -- playlist.delete
   case "playlist.delete":
     var data struct {
       PlaylistId bson.ObjectId `json:"playlistId"`
@@ -1629,6 +1664,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- playlist.edit
   case "playlist.edit":
     var data struct {
       PlaylistId bson.ObjectId `json:"playlistId"`
@@ -1672,6 +1708,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, playlist.Struct()).Dispatch(c)
+  // -- playlist.get
   case "playlist.get":
     var data struct {
       PlaylistId bson.ObjectId `json:"playlistId"`
@@ -1706,6 +1743,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, db.StructPlaylistItems(playlistItems)).Dispatch(c)
+  // -- playlist.getList
   case "playlist.getList":
     c.Lock()
     defer c.Unlock()
@@ -1717,6 +1755,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, db.StructPlaylists(playlists)).Dispatch(c)
+  // -- playlist.move
   case "playlist.move":
     var data struct {
       PlaylistId bson.ObjectId `json:"playlistId"`
@@ -1778,6 +1817,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      PlaylistItem
   */
+  // -- playlistItem.delete
   case "playlistItem.delete":
     var data struct {
       PlaylistId     bson.ObjectId `json:"playlistId"`
@@ -1841,6 +1881,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- playlistItem.edit
   case "playlistItem.edit":
     var data struct {
       PlaylistId     bson.ObjectId `json:"playlistId"`
@@ -1918,6 +1959,7 @@ func (c *Client) Receive(msg []byte) {
       return
     }
     NewAction(r.Id, enums.RESPONSE_CODES.OK, r.Action, nil).Dispatch(c)
+  // -- playlistItem.move
   case "playlistItem.move":
     var data struct {
       PlaylistId     bson.ObjectId `json:"playlistId"`
@@ -1981,6 +2023,7 @@ func (c *Client) Receive(msg []byte) {
   /*
      Vote
   */
+  // -- vote.woot
   case "vote.woot":
     c.Lock()
     defer c.Unlock()
@@ -1993,6 +2036,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, community.Vote(c.U, "woot"), r.Action, nil).Dispatch(c)
+  // -- vote.meh
   case "vote.meh":
     c.Lock()
     defer c.Unlock()
@@ -2004,6 +2048,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, community.Vote(c.U, "meh"), r.Action, nil).Dispatch(c)
+  // -- vote.save
   case "vote.save":
     var data struct {
       PlaylistId bson.ObjectId `json:"playlistId"`
@@ -2068,5 +2113,7 @@ func (c *Client) Receive(msg []byte) {
     }
 
     NewAction(r.Id, community.Vote(c.U, "save"), r.Action, nil).Dispatch(c)
+  default:
+    c.Terminate()
   }
 }
