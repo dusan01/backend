@@ -55,12 +55,12 @@ func NewSocket(res http.ResponseWriter, req *http.Request) {
       return
     }
 
+    dcTimer.Stop()
+
     if data.Hello {
-      dcTimer.Stop()
       debug.Log("[socket/NewSocket] Client handshake successful")
       pool.NewClient(req, conn)
     } else if data.Server == "09fj032jf093j09mVJVWOimjzoimvor3imjmR23v43" && strings.Split(req.RemoteAddr, ":")[0] == "127.0.0.1" {
-      dcTimer.Stop()
       pool.NewServer(conn)
     } else {
       debug.Log("[socket/NewSocket] Received bad handshake")

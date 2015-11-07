@@ -60,6 +60,7 @@ func (s *Server) Receive(msg []byte) {
   }
 
   if err := json.Unmarshal(msg, &r); err != nil {
+    debug.Log("[pool/Server.Receive] Server sent bad data")
     return
   }
 
@@ -71,7 +72,7 @@ func (s *Server) Receive(msg []byte) {
     }
 
     if err := json.Unmarshal(r.Data, &data); err != nil {
-      debug.Log("[pool/Server.Receive -> cook] Failed to unmarshal json: [%s]", err.Error())
+      debug.Log("[pool/Server.Receive -> cook] Failed to unmarshal json. Reason: %s", err.Error())
       NewAction(r.Id, enums.RESPONSE_CODES.BAD_REQUEST, r.Action, nil).Dispatch(s)
       return
     }

@@ -129,7 +129,7 @@ func (c *Client) Receive(msg []byte) {
   }
 
   if err := json.Unmarshal(msg, &r); err != nil {
-    debug.Log("[pool/client.Receive] Client sent bad data")
+    debug.Log("[pool/Client.Receive] Client sent bad data")
     return
   }
 
