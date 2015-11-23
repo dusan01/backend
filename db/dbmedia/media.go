@@ -217,7 +217,7 @@ func (m Media) Struct() structs.MediaInfo {
 		Plays:     m.Plays,
 		Woots:     m.Woots,
 		Mehs:      m.Mehs,
-		Grabs:     m.Grabs,
+		Saves:     m.Saves,
 		Playlists: m.Playlists,
 	}
 }

@@ -29,8 +29,8 @@ func init() {
 
 	gothic.Store = sessions.NewCookieStore(securecookie.GenerateRandomKey(64))
 	goth.UseProviders(
-		twitter.New("sVHYAm8YdmTn8H5R4zbqQ15db", "T80kt2I0n7fAJyMtihdn2zh0KCCbyYoUPpbbAJGTBIGp3q2Yir", "http://devv.turn.fm/_/auth/twitter/callback"),
-		facebook.New("1626304387621454", "3d4bf252b325afda0ccf1c66af79ca98", "http://devv.turn.fm/_/auth/facebook/callback"),
+		twitter.New("sVHYAm8YdmTn8H5R4zbqQ15db", "T80kt2I0n7fAJyMtihdn2zh0KCCbyYoUPpbbAJGTBIGp3q2Yir", "http://"+domain+"/_/auth/twitter/callback"),
+		facebook.New("1626304387621454", "3d4bf252b325afda0ccf1c66af79ca98", "http://"+domain+"/_/auth/facebook/callback"),
 	)
 	gothic.GetState = func(req *http.Request) string {
 		return req.URL.Query().Get("state")

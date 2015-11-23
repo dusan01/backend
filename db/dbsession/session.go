@@ -40,10 +40,10 @@ type Session struct {
 	// When the session expires
 	Expires *time.Time `json:"expires" bson:"expires"`
 
-	// When the obejct was created
+	// When the object was created
 	Created time.Time `json:"created" bson:"created"`
 
-	// When the obejct was last updated
+	// When the object was last updated
 	Updated time.Time `json:"updated" bson:"updated"`
 }
 

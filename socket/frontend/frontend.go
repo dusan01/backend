@@ -57,7 +57,7 @@ func (f *Frontend) listen() {
 			return
 		}
 
-		// Call appropraite action from package hybris/frontend/frontendaction
+		// Call appropriate action from package hybris/frontend/frontendaction
 		frontendaction.Execute(f, msg)
 	}
 }

@@ -14,6 +14,6 @@ type MediaInfo struct {
 	Plays     int           `json:"plays"`
 	Woots     int           `json:"woots"`
 	Mehs      int           `json:"mehs"`
-	Grabs     int           `json:"grabs"`
+	Saves     int           `json:"saves"`
 	Playlists int           `json:"playlists"`
 }

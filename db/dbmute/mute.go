@@ -35,7 +35,7 @@ type Mute struct {
 	// User who got muted
 	MuteeId bson.ObjectId `json:"muteeId" bson:"muteeId"`
 
-	// User who mreated this mute
+	// User who created this mute
 	MuterId bson.ObjectId `json:"muterId" bson:"muterId"`
 
 	// Community this mute belongs to

@@ -51,7 +51,7 @@ type Community struct {
 	// Whether or not the waitlist is enabled
 	WaitlistEnabled bool `json:"waitlistEnabled" bson:"waitlistEnabled"`
 
-	// Whether or not dj recycling is enabled
+	// Whether or not DJ recycling is enabled
 	DjRecycling bool `json:"djRecycling" bson:"djRecycling"`
 
 	// Whether or not the community is marked as NSFW

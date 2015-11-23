@@ -3,7 +3,6 @@ package atlas
 import (
 	"errors"
 	"hybris/db/dbuser"
-	"hybris/debug"
 	"hybris/validation"
 	"strings"
 
@@ -37,7 +36,6 @@ func NewToken(provider, userId string) (token string) {
 func AddIntegration(user *dbuser.User, token string) error {
 	session, ok := sessions[token]
 	if !ok {
-		debug.Log("[atlas > AddIntegration] Invalid token: [%s]", token)
 		return errors.New("Invalid token.")
 	}
 
@@ -56,7 +54,6 @@ func AddIntegration(user *dbuser.User, token string) error {
 func NewSocialUser(username, token string) (dbuser.User, error) {
 	user, err := dbuser.New(username)
 	if err != nil {
-		debug.Log("[atlas > NewSocialUser] Failed to create user: [%s]", err.Error())
 		return dbuser.User{}, err
 	}
 	if err := AddIntegration(&user, token); err != nil {
@@ -74,21 +71,17 @@ func NewEmailUser(username, email, password string) (dbuser.User, error) {
 
 	email = strings.ToLower(email)
 	if !validation.Email(email) {
-		debug.Log("[atlas > NewEmailUser] Email is invalid: [%s]", email)
 		return dbuser.User{}, errors.New("Invalid email.")
 	}
 	if !validation.Password(password) {
-		debug.Log("[atlas > NewEmailUser] Password is invalid")
 		return dbuser.User{}, errors.New("Invalid password.")
 	}
 	if _, err := dbuser.Get(uppdb.Cond{"email": email}); err == nil {
-		debug.Log("[atlas > NewEmailUser] Email already in use: [%s]", email)
 		return dbuser.User{}, errors.New("Email taken.")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {
-		debug.Log("[atlas > NewEmailUser] Failed to generate password hash")
 		return dbuser.User{}, errors.New("Server error.")
 	}
 

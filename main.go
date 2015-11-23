@@ -2,11 +2,14 @@ package main
 
 import (
 	"flag"
-	"github.com/gorilla/pat"
 	"hybris/routes"
 	"log"
 	"net/http"
 	"runtime"
+
+	"github.com/gorilla/pat"
+
+	_ "hybris/debug"
 )
 
 func main() {

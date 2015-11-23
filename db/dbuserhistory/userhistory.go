@@ -32,7 +32,7 @@ type UserHistory struct {
 	// Community this belongs to
 	CommunityId bson.ObjectId `json:"communityId" bson:"communityId"`
 
-	// User who was the current DJ
+	// User who was DJing
 	UserId bson.ObjectId `json:"userId" bson:"userId"`
 
 	// Database media object id
@@ -68,7 +68,7 @@ func New(communityId, userId, mediaId bson.ObjectId) (UserHistory, error) {
 		MediaId:     mediaId,
 		Woots:       0,
 		Mehs:        0,
-		Grabs:       0,
+		Saves:       0,
 		Created:     time.Now(),
 		Updated:     time.Now(),
 	}, nil

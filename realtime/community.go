@@ -66,7 +66,7 @@ func (c *Community) Advance() {
 
 		media.Woots += len(c.Media.Votes.Woot)
 		media.Mehs += len(c.Media.Votes.Meh)
-		media.Grabs += len(c.Media.Votes.Grab)
+		media.Saves += len(c.Media.Votes.Save)
 
 		if err := media.Save(); err != nil {
 			c.Panic()
@@ -198,9 +198,9 @@ func (c Community) GetState() structs.CommunityState {
 // Lock the realtime object
 // If the media is currently not nil then
 //  Update media stats
-//  Create and save histroy object for both user and community
-//  If recycling enabled then add the dj to the end of the waitlist
-// If the waitlist has atleast 1 user in it then
+//  Create and save history object for both user and community
+//  If recycling enabled then add the DJ to the end of the waitlist
+// If the waitlist has at least 1 user in it then
 //  Get the realtime user object (?)
 //  Get their active playlist
 //  Get the first item in the active playlist
@@ -211,7 +211,7 @@ func (c Community) GetState() structs.CommunityState {
 //  Create objects
 //  Start a new timer
 // If the media is not nil
-//  Emite events
+//  Emit events
 
 // DISCONNECTION
 //

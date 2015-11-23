@@ -34,7 +34,7 @@ type CommunityHistory struct {
 	// Community this belongs to
 	CommunityId bson.ObjectId `json:"communityId" bson:"communityId"`
 
-	// User who was djing
+	// User who was DJing
 	UserId bson.ObjectId `json:"userId" bson:"userId"`
 
 	// Database media object id
@@ -49,7 +49,7 @@ type CommunityHistory struct {
 	// Amount of times people wooted
 	Woots int `json:"woots" bson:"woots"`
 
-	// Amount of times people meh'd
+	// Amount of times people mehd
 	Mehs int `json:"mehs" bson:"mehs"`
 
 	// Amount of times people saved
@@ -70,7 +70,7 @@ func New(communityId, userId, mediaId bson.ObjectId) (CommunityHistory, error) {
 		MediaId:     mediaId,
 		Woots:       0,
 		Mehs:        0,
-		Grabs:       0,
+		Saves:       0,
 		Created:     time.Now(),
 		Updated:     time.Now(),
 	}, nil
@@ -179,7 +179,7 @@ func (ch CommunityHistory) Struct() structs.HistoryItem {
 		Votes: structs.VoteCount{
 			Woot: ch.Woots,
 			Meh:  ch.Mehs,
-			Grab: ch.Grabs,
+			Save: ch.Saves,
 		},
 	}
 }

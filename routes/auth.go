@@ -51,40 +51,32 @@ func authHandler(res http.ResponseWriter, req *http.Request) {
 	loggedIn = true
 	SetCookie(res, session.Cookie)
 	writeSocialWindowResponse(res, token, provider, loggedIn, failed)
-
-	// Check auth cookie;
-	//  ^ Try and find a usable session
-	// Parse info from gothic
-	// Get user;
-	//  If user exists then
-	//   Set cookie
-	//   WriteResponse LoggedIn : true
 }
 
 func writeSocialWindowResponse(res http.ResponseWriter, token, provider string, loggedIn, failed bool) {
 	res.Header().Set("Content-Type", "text/html; encoding=utf-8")
 	tmpl, err := template.New("test").Parse(`
-    <!doctype html>
-    <html>
-    <head>
-      <title>Callback</title>
-    </head>
-    <body style="background: #1A2326;color: white; font-family: sans-serif;">
-      <div style="position: absolute;top:50%;left:50%; transform: translate(-50%, -50%);">This window should close automatically.</div>
-      <script>
-        window.opener.setTimeout(function() {
-          window.opener.TURN_SOCIAL_CALLBACK({
-            token: '{{.Token}}',
-            type: '{{.Provider}}',
-            loggedIn: {{.LoggedIn}},
-            failed: {{.Failed}}
-          });
-        }, 1);
-        window.close()
-      </script>
-    </body>
-  </html>
-  `)
+        <!doctype html>
+        <html>
+        <head>
+                <title>Callback</title>
+        </head>
+        <body style="background: #1A2326;color: white; font-family: sans-serif;">
+                <div style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%);">This window should close automatically.</div>
+                <script>
+                        window.opener.setTimeout(function() {
+                                window.opener.TURN_SOCIAL_CALLBACK({
+                                        token: '{{.Token}}',
+                                        type: '{{.Provider}}',
+                                        loggedIn: {{.LoggedIn}},
+                                        failed: {{.Failed}}
+                                });
+                        }, 1);
+                        window.close()
+                </script>
+        </body>
+        </html>
+        `)
 	if err != nil {
 		res.WriteHeader(500)
 	}

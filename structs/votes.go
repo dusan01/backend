@@ -7,5 +7,5 @@ import (
 type Votes struct {
 	Woot []bson.ObjectId `json:"woot"`
 	Meh  []bson.ObjectId `json:"meh"`
-	Grab []bson.ObjectId `json:"grab"`
+	Save []bson.ObjectId `json:"save"`
 }

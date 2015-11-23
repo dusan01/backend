@@ -62,7 +62,7 @@ type User struct {
 	// Amount of diamonds a user has
 	Diamonds int `json:"diamonds" bson:"diamonds"`
 
-	// User's prefered language
+	// User's preferred language
 	Locale string `json:"locale" bson:"locale"`
 
 	// When the object was created
