@@ -1,13 +1,13 @@
 package clientaction
 
 import (
-  "hybris/realtime"
+	"hybris/realtime"
 )
 
 type Client interface {
-  Lock()
-  Unlock()
-  Send([]byte)
-  Terminate()
-  GetRealtimeUser() *realtime.User
+	Lock()
+	Unlock()
+	Send([]byte)
+	Terminate()
+	GetRealtimeUser() *realtime.User
 }

@@ -1,7 +1,0 @@
-db/
-  media
-  ...
-  *** Extend methods. Redo. Subpackagws? (dbmedia.New) ***
-realtime/
-  clients
-  communities

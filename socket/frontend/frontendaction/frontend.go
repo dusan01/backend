@@ -1,8 +1,8 @@
 package frontendaction
 
 type Frontend interface {
-  Lock()
-  Unlock()
-  Send([]byte)
-  Terminate()
+	Lock()
+	Unlock()
+	Send([]byte)
+	Terminate()
 }
