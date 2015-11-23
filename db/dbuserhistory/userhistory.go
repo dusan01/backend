@@ -32,7 +32,7 @@ type UserHistory struct {
 	// Community this belongs to
 	CommunityId bson.ObjectId `json:"communityId" bson:"communityId"`
 
-	// User who was djing
+	// User who was the current DJ
 	UserId bson.ObjectId `json:"userId" bson:"userId"`
 
 	// Database media object id
@@ -44,14 +44,14 @@ type UserHistory struct {
 	// Artist of the media inherited from PlaylistItem
 	Artist string `json:"artist" bson:"artist"`
 
-	// Ammount of times people wooted
+	// Amount of times people wooted
 	Woots int `json:"woots" bson:"woots"`
 
-	// Amount of times people meh'd
+	// Amount of times people mehd
 	Mehs int `json:"mehs" bson:"mehs"`
 
-	// Amount of times people grabbed
-	Grabs int `json:"grabbed" bson:"grabbed"`
+	// Amount of times people saved
+	Saves int `json:"saves" bson:"saves"`
 
 	// The date this objects was created
 	Created time.Time `json:"created" bson:"created"`

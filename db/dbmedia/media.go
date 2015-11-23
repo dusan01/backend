@@ -60,11 +60,11 @@ type Media struct {
 	// Amount of times the media has been wooted
 	Woots int `json:"woots" bson:"woots"`
 
-	// Amoutn of times the media has been mehd
+	// Amount of times the media has been mehd
 	Mehs int `json:"mehs" bson:"mehs"`
 
-	// Amount of times the media has been grabbed
-	Grabs int `json:"grabs" bson:"grabs"`
+	// Amount of times the media has been saved
+	Saves int `json:"saves" bson:"saves"`
 
 	// Amount of times the media has been inserted into a playlist
 	Playlists int `json:"playlists" bson:"playlists"`

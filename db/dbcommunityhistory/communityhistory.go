@@ -46,14 +46,14 @@ type CommunityHistory struct {
 	// Artist of the media inherited from PlaylistItem
 	Artist string `json:"artist" bson:"artist"`
 
-	// Ammount of times people wooted
+	// Amount of times people wooted
 	Woots int `json:"woots" bson:"woots"`
 
 	// Amount of times people meh'd
 	Mehs int `json:"mehs" bson:"mehs"`
 
-	// Amount of times people grabbed
-	Grabs int `json:"grabbed" bson:"grabbed"`
+	// Amount of times people saved
+	Saves int `json:"saves" bson:"saves"`
 
 	// When the object was created
 	Created time.Time `json:"created" bson:"created"`
