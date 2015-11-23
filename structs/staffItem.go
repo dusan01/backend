@@ -1,10 +1,8 @@
 package structs
 
-import (
-  "gopkg.in/mgo.v2/bson"
-)
+import "gopkg.in/mgo.v2/bson"
 
 type StaffItem struct {
-  UserId bson.ObjectId `json:"userId"`
-  Role   int           `json:"role"`
+	UserId bson.ObjectId `json:"userId"`
+	Role   int           `json:"role"`
 }

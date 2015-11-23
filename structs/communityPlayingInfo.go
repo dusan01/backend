@@ -1,13 +1,14 @@
 package structs
 
 import (
-  "gopkg.in/mgo.v2/bson"
-  "time"
+	"time"
+
+	"gopkg.in/mgo.v2/bson"
 )
 
 type CommunityPlayingInfo struct {
-  DjId    bson.ObjectId     `json:"djId"`
-  Started time.Time         `json:"started"`
-  Media   ResolvedMediaInfo `json:"media"`
-  Votes   Votes             `json:"votes"`
+	DjId    bson.ObjectId     `json:"djId"`
+	Started time.Time         `json:"started"`
+	Media   ResolvedMediaInfo `json:"media"`
+	Votes   Votes             `json:"votes"`
 }
