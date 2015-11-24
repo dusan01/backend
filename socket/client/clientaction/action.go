@@ -10,7 +10,7 @@ import (
 var actions = map[string]func(Client, []byte) (int, interface{}){
 	"adm.broadcast":        AdmBroadcast,
 	"adm.globalBan":        AdmGlobalBan,
-	"adm.Maintenance":      AdmMaintenance,
+	"adm.maintenance":      AdmMaintenance,
 	"chat.delete":          ChatDelete,
 	"chat.send":            ChatSend,
 	"community.create":     CommunityCreate,

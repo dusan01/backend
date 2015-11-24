@@ -68,10 +68,9 @@ func New(req *http.Request, conn *websocket.Conn) (*Client, error) {
 		client.Lock()
 		defer client.Unlock()
 		message.NewEvent("staleSession", true).Dispatch(client)
-		c.RealtimeUser = client.RealtimeUser.Hijack(c)
-	} else {
-		c.RealtimeUser = realtime.NewUser(session.UserId, c)
 	}
+
+	c.RealtimeUser = realtime.NewUser(session.UserId, c)
 
 	Clients[session.UserId] = c
 
@@ -87,16 +86,12 @@ func New(req *http.Request, conn *websocket.Conn) (*Client, error) {
 func (c *Client) Send(data []byte) {
 	c.ConnM.Lock()
 	defer c.ConnM.Unlock()
-	c.Conn.SetWriteDeadline(time.Now().Add(writeTimeout))
-	if err := c.Conn.WriteMessage(websocket.TextMessage, data); err != nil {
-		c.Conn.Close()
+	conn := c.Conn
+	conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		conn.Close()
 	}
 }
-
-// Destroy client
-// After 30 seconds;
-//  Check if the client exists
-//  If not then destroy the realtimeUser
 
 func (c *Client) Terminate() {
 	realtimeUser := c.RealtimeUser
@@ -116,8 +111,9 @@ func (c *Client) GetRealtimeUser() *realtime.User {
 
 func (c *Client) listen() {
 	defer c.Terminate()
+	conn := c.Conn
 	for {
-		_, msg, err := c.Conn.ReadMessage()
+		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			return
 		}
@@ -128,12 +124,13 @@ func (c *Client) listen() {
 
 func (c *Client) heartbeat() {
 	ticker := time.NewTicker(pingPeriod)
+	conn := c.Conn
 	defer ticker.Stop()
-	defer c.Conn.Close()
+	defer conn.Close()
 	for {
 		<-ticker.C
-		c.Conn.SetWriteDeadline(time.Now().Add(writeTimeout))
-		if err := c.Conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+		conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+		if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 			return
 		}
 	}

@@ -53,7 +53,7 @@ func Soundcloud(id string) (string, string, string, string, int, error) {
 	}
 
 	if len(blurb) > 400 {
-		blurb = blurb[:396] + "..."
+		blurb = blurb[:397] + "..."
 	}
 
 	return image, artist, title, blurb, length, nil

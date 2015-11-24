@@ -1,12 +1,13 @@
 package downloader
 
 import (
-	"code.google.com/p/google-api-go-client/googleapi/transport"
-	"code.google.com/p/google-api-go-client/youtube/v3"
 	"errors"
 	"net/http"
 	"strings"
 	"time"
+
+	"code.google.com/p/google-api-go-client/googleapi/transport"
+	youtube "code.google.com/p/google-api-go-client/youtube/v3"
 )
 
 var ytService *youtube.Service
@@ -56,7 +57,7 @@ func Youtube(id string) (string, string, string, string, int, error) {
 	}
 
 	if len(blurb) > 400 {
-		blurb = blurb[:396] + "..."
+		blurb = blurb[:397] + "..."
 	}
 
 	dur, err := time.ParseDuration(strings.ToLower(item.ContentDetails.Duration[2:]))
