@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"errors"
+	"hybris/debug"
 	"net/http"
 	"strings"
 	"time"
@@ -13,24 +14,30 @@ import (
 var ytService *youtube.Service
 
 func init() {
+	debug.Log("Creating youtube oAuth service")
 	client := &http.Client{
 		Transport: &transport.APIKey{Key: "AIzaSyBAdDIgUc_loht-bJyBtaRcD8aDeupAaeE"},
 	}
 	var err error
 	ytService, err = youtube.New(client)
 	if err != nil {
+		debug.Log("Failed to create youtube oAuth service: %s", err.Error())
 		panic(err)
 	}
 }
 
 func Youtube(id string) (string, string, string, string, int, error) {
-	videoCall := ytService.Videos.List("snippet,contentDetails").Id(id)
+	debug.Log("Downloading media info for %s from youtube", id)
+	videoCall := ytService.Videos.List("snippet,contentDetails").
+		Id(id)
 	videoResponse, err := videoCall.Do()
 	if err != nil {
+		debug.Log("Failed to download media for %s info from youtube: %s", id, err.Error())
 		return "", "", "", "", 0, err
 	}
 
 	if len(videoResponse.Items) <= 0 {
+		debug.Log("Youtube returned 0 results on query for %s", id)
 		return "", "", "", "", 0, errors.New("Youtube API returned no media")
 	}
 
@@ -44,7 +51,7 @@ func Youtube(id string) (string, string, string, string, int, error) {
 		length int
 	)
 
-	image = "https://i1.ytimg.com/vi/" + id + "/hqdefault.jpg"
+	image = "https://img.youtube.com/vi/" + id + "/hqdefault.jpg"
 	title = item.Snippet.Title
 	blurb = item.Snippet.Description
 
@@ -62,9 +69,11 @@ func Youtube(id string) (string, string, string, string, int, error) {
 
 	dur, err := time.ParseDuration(strings.ToLower(item.ContentDetails.Duration[2:]))
 	if err != nil {
+		debug.Log("Could not parse media duration for %s from youtube: %s", id, err.Error())
 		return "", "", "", "", 0, err
 	}
 	length = int(dur.Seconds())
 
+	debug.Log("Successfully downloaded media info for %s from youtube", id)
 	return image, artist, title, blurb, length, nil
 }
